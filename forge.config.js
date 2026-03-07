@@ -8,14 +8,13 @@ module.exports = {
   rebuildConfig: {},
   makers: [
     {
-      name: '@electron-forge/maker-squirrel',
+      name: '@electron-addons/electron-forge-maker-nsis',
       config: {
-        name: 'PrinterAgent',
-        appId: 'com.squirrel.PrinterAgent.PrinterAgent',
-        ...(process.platform !== 'win32' && { skipUpdateIcon: true }),
         ...(process.env.WIN_CERT_FILE && {
-          certificateFile: process.env.WIN_CERT_FILE,
-          certificatePassword: process.env.WIN_CERT_PASSWORD,
+          codesigning: {
+            certificateFile: process.env.WIN_CERT_FILE,
+            certificatePassword: process.env.WIN_CERT_PASSWORD,
+          },
         }),
       },
     },

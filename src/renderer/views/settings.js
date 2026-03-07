@@ -72,7 +72,7 @@ function orderDetailsLine(order) {
     try {
       const d = new Date(createdAt);
       if (!Number.isNaN(d.getTime())) parts.push(d.toLocaleString());
-    } catch (_) {}
+    } catch { void 0; }
   }
   return parts.join(' · ');
 }

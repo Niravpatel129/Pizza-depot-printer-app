@@ -20,11 +20,7 @@ console.log = patchLog('log');
 console.error = patchLog('error');
 console.warn = patchLog('warn');
 
-if (require('electron-squirrel-startup')) {
-  app.quit();
-}
-
-app.setAppUserModelId('com.squirrel.PrinterAgent.PrinterAgent');
+app.setAppUserModelId('PrinterAgent');
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled rejection at', promise, 'reason:', reason);
