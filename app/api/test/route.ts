@@ -1,10 +1,10 @@
-import { buildTestReceiptEscpos } from "@/lib/escpos";
+import { buildTestReceiptEscpos } from '@/lib/escpos';
 import {
-  sendToPrinter,
-  sendToPrinterUSB,
   parsePrinterIP,
   parsePrinterName,
-} from "@/lib/sendToPrinter";
+  sendToPrinter,
+  sendToPrinterUSB,
+} from '@/lib/sendToPrinter';
 
 export async function POST(request: Request) {
   try {
@@ -17,29 +17,29 @@ export async function POST(request: Request) {
     const printerName = parsePrinterName(body);
     if (printerName) {
       await sendToPrinterUSB(printerName, buffer);
-      return Response.json({ ok: true, message: "Test receipt sent (USB)" });
+      return Response.json({ ok: true, message: 'Test receipt sent (USB)' });
     }
     const printerIP = parsePrinterIP(body);
     if (printerIP) {
       await sendToPrinter(printerIP, buffer);
-      return Response.json({ ok: true, message: "Test receipt sent (Ethernet)" });
+      return Response.json({ ok: true, message: 'Test receipt sent (Ethernet)' });
     }
     return Response.json(
       {
         ok: false,
-        code: "NO_TARGET",
-        message: "Provide printerName (USB) or printerIP (Ethernet)",
+        code: 'NO_TARGET',
+        message: 'Provide printerName (USB) or printerIP (Ethernet)',
       },
-      { status: 400 }
+      { status: 400 },
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Test print failed";
+    const message = err instanceof Error ? err.message : 'Test print failed';
     const code =
-      err instanceof Error && "code" in err
+      err instanceof Error && 'code' in err
         ? (err.code as string)
-        : message.includes("timeout")
-          ? "TIMEOUT"
-          : "PRINTER_ERROR";
+        : message.includes('timeout')
+          ? 'TIMEOUT'
+          : 'PRINTER_ERROR';
     return Response.json({ ok: false, code, message }, { status: 500 });
   }
 }

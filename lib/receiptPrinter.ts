@@ -95,10 +95,15 @@ export async function testPrint(): Promise<{ ok: boolean; message?: string }> {
   return request("/test", b);
 }
 
-export async function listPrinters(): Promise<string[]> {
+export async function listPrinters(): Promise<{ printers: string[]; debug?: string }> {
   const url = `${apiBase}/printers`;
   const res = await fetch(url);
-  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; printers?: string[]; message?: string };
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    printers?: string[];
+    message?: string;
+    debug?: string;
+  };
   if (!res.ok) throw new Error(data.message ?? "Failed to list printers");
-  return data.printers ?? [];
+  return { printers: data.printers ?? [], debug: data.debug };
 }

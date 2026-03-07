@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import {
-  connectPrinter,
-  connectPrinterUSB,
-  setApiBase,
-  printReceipt,
-  testPrint,
-  listPrinters,
-  getPrinterIP,
+    connectPrinter,
+    connectPrinterUSB,
+    getPrinterIP,
+    listPrinters,
+    printReceipt,
+    setApiBase,
+    testPrint,
 } from "@/lib/receiptPrinter";
 import { formatReceiptFromOrder } from "@/lib/receiptTemplate";
+import { useState } from "react";
 
 const SAMPLE_ORDER = {
   businessName: "Sample Cafe",
@@ -38,21 +38,32 @@ export default function Home() {
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [printerDebug, setPrinterDebug] = useState<string | null>(null);
 
   const showMsg = (text: string, err = false) => {
     setMessage(text);
     setIsError(err);
   };
 
+  const isDeployed = typeof window !== "undefined" && !["localhost", "127.0.0.1"].includes(window.location.hostname);
+
   const handleLoadPrinters = async () => {
     setApiBase("/api");
     setLoadingPrinters(true);
+    setPrinterDebug(null);
     showMsg("Loading printers…");
     try {
-      const list = await listPrinters();
+      const { printers: list, debug } = await listPrinters();
       setUsbPrinters(list);
-      if (list.length === 0) showMsg("No system printers found.", true);
-      else {
+      if (list.length === 0) {
+        if (debug) setPrinterDebug(debug);
+        showMsg(
+          isDeployed
+            ? "No printers on this server. Run the app locally (same machine as the printer) for USB printing."
+            : "No system printers found. Add a printer in System Settings (Mac) or Settings → Devices (Windows), then try again.",
+          true
+        );
+      } else {
         showMsg(`Found ${list.length} printer(s). Select one below.`);
         if (!selectedUsbPrinter && list[0]) setSelectedUsbPrinter(list[0]);
       }
@@ -193,6 +204,11 @@ export default function Home() {
       <p className="mt-1 text-zinc-600 dark:text-zinc-400">
         USB first, Ethernet backup. Epson TM-T88IV.
       </p>
+      {isDeployed && (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          You’re on a deployed site. Printing only works when this app runs on the same machine or network as the printer (e.g. <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/50">npm run dev</code> on your computer).
+        </p>
+      )}
 
       <div className="mt-4 flex gap-0">
         <button
@@ -258,8 +274,18 @@ export default function Home() {
               </button>
             </>
           )}
+          {printerDebug && (
+            <details className="mt-2 rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-800/50">
+              <summary className="cursor-pointer text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                System printer check output
+              </summary>
+              <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-all text-xs text-zinc-600 dark:text-zinc-400">
+                {printerDebug}
+              </pre>
+            </details>
+          )}
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Uses system printers (e.g. TM-T88IV over USB).
+            Uses system printers (e.g. TM-T88IV over USB). Add the printer in System Settings → Printers &amp; Scanners (Mac) or Settings → Bluetooth &amp; devices → Printers (Windows) first.
           </p>
         </section>
       )}
