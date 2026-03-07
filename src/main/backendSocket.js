@@ -1,14 +1,12 @@
-const io = require('socket.io-client');
 const https = require('https');
 const http = require('http');
 const { loadConfig, API_BASE_URL } = require('./config');
 const { doPrint } = require('./print');
-const { buildReceipt, buildReceiptBuffer } = require('./receiptFormatter');
+const { buildReceiptBuffer } = require('./receiptFormatter');
 
 const MAX_RECENTLY_PRINTED = 50;
 const RETRY_DELAY_MS = 15000;
 
-let socket = null;
 let printQueue = [];
 let recentlyPrinted = [];
 let printedOrderIds = new Set();
@@ -22,12 +20,7 @@ let retryTimer = null;
 let printError = null;
 let nextRetryAt = null;
 let connectionError = null;
-let reconnectFallbackTimer = null;
-let livenessCheckTimer = null;
-let livenessFailureCount = 0;
-const RECONNECT_POLL_DELAY_MS = 30000;
-const LIVENESS_FAILURES_BEFORE_DISCONNECT = 3;
-const LIVENESS_CHECK_MS = 25000;
+let lastPolledAt = null;
 
 function notify() {
   if (notifyFn) notifyFn({ queue: getQueue(), status: getStatus() });
@@ -56,6 +49,7 @@ function getStatus() {
     paused: isPaused,
     queueLength: printQueue.length,
     lastPrintedAt,
+    lastPolledAt: lastPolledAt || null,
     printError: printError || null,
     connectionError: connectionError || null,
     retryScheduled: !!retryTimer,
@@ -153,63 +147,11 @@ function reprintOrder(order) {
   addOrderToQueue(order);
 }
 
-function onOrderNew(order) {
-  addOrderToQueue(order);
-}
-
-function onOrderPrint(order) {
-  addOrderToQueue(order);
-}
-
-function onOrderUpdated(order) {
-  console.log('Order updated:', order?._id || order?.orderNumber);
-}
-
 function stopPolling() {
   if (pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
   }
-}
-
-function clearReconnectFallback() {
-  if (reconnectFallbackTimer) {
-    clearTimeout(reconnectFallbackTimer);
-    reconnectFallbackTimer = null;
-  }
-}
-
-function clearLivenessCheck() {
-  if (livenessCheckTimer) {
-    clearInterval(livenessCheckTimer);
-    livenessCheckTimer = null;
-  }
-}
-
-function startLivenessCheck() {
-  clearLivenessCheck();
-  if (!socket) return;
-  livenessFailureCount = 0;
-  livenessCheckTimer = setInterval(() => {
-    if (!connected || !socket) return;
-    getOrderList({ limit: 1 })
-      .then(() => { livenessFailureCount = 0; })
-      .catch(() => {
-        livenessFailureCount += 1;
-        if (livenessFailureCount >= LIVENESS_FAILURES_BEFORE_DISCONNECT && socket && connected) {
-          clearLivenessCheck();
-          socket.disconnect();
-        }
-      });
-  }, LIVENESS_CHECK_MS);
-}
-
-function schedulePollingFallback() {
-  clearReconnectFallback();
-  reconnectFallbackTimer = setTimeout(() => {
-    reconnectFallbackTimer = null;
-    if (!connected) startPolling();
-  }, RECONNECT_POLL_DELAY_MS);
 }
 
 function getOrderList(opts = {}) {
@@ -225,7 +167,6 @@ function getOrderList(opts = {}) {
   if (opts.status) params.set('status', opts.status);
   const pathStr = `/api/kitchen/orders?${params.toString()}`;
   const fullUrl = new URL(pathStr, base);
-  console.log('GET /api/kitchen/orders requesting', fullUrl.origin + fullUrl.pathname);
   return new Promise((resolve, reject) => {
     const protocol = fullUrl.protocol === 'https:' ? https : http;
     const req = protocol.get(fullUrl.toString(), (res) => {
@@ -235,7 +176,6 @@ function getOrderList(opts = {}) {
         try {
           const json = JSON.parse(data || '{}');
           const orders = json.orders || [];
-          console.log('Order list response:', orders.length, 'orders');
           resolve({ orders });
         } catch (e) {
           reject(e);
@@ -247,11 +187,11 @@ function getOrderList(opts = {}) {
   });
 }
 
-function fetchKitchenOrders(cb) {
+function fetchKitchenOrders() {
   const config = loadConfig();
   const base = (API_BASE_URL || '').replace(/\/$/, '');
   const secret = config.kitchenSecret || '';
-  if (!base || !secret) return cb(null, []);
+  if (!base || !secret) return;
   const since = lastPollSince ? `&since=${encodeURIComponent(lastPollSince)}` : '';
   const pathStr = `/api/kitchen/orders?secret=${encodeURIComponent(secret)}&limit=50${since}`;
   const url = new URL(pathStr, base);
@@ -261,6 +201,8 @@ function fetchKitchenOrders(cb) {
     res.on('data', (chunk) => (data += chunk));
     res.on('end', () => {
       try {
+        connectionError = null;
+        lastPolledAt = new Date().toISOString();
         const json = JSON.parse(data || '{}');
         const orders = json.orders || [];
         let maxUpdated = lastPollSince;
@@ -270,91 +212,55 @@ function fetchKitchenOrders(cb) {
           addOrderToQueue(o);
         });
         if (maxUpdated) lastPollSince = maxUpdated;
-        cb(null, orders);
+        notify();
       } catch (e) {
-        cb(e, []);
+        connectionError = e?.message || 'Parse error';
+        notify();
       }
     });
   });
-  req.on('error', cb);
-  req.setTimeout(15000, () => { req.destroy(); cb(new Error('timeout'), []); });
+  req.on('error', (e) => {
+    connectionError = e?.message || 'Request failed';
+    notify();
+  });
+  req.setTimeout(15000, () => {
+    req.destroy();
+    connectionError = 'timeout';
+    notify();
+  });
 }
 
 function startPolling() {
   stopPolling();
   const config = loadConfig();
   const interval = Math.max(5000, config.pollIntervalMs || 10000);
-  fetchKitchenOrders(() => {});
-  pollTimer = setInterval(() => fetchKitchenOrders(() => {}), interval);
+  fetchKitchenOrders();
+  pollTimer = setInterval(fetchKitchenOrders, interval);
   console.log('Kitchen polling started (interval %d ms)', interval);
 }
 
 function connect() {
   const config = loadConfig();
-  const url = (API_BASE_URL || '').replace(/\/$/, '');
   const secret = config.kitchenSecret || '';
   stopPolling();
-  if (socket) {
-    socket.removeAllListeners();
-    socket.disconnect();
-    socket = null;
-  }
   connected = false;
+  connectionError = null;
   notify();
   if (!secret) {
-    console.log('Socket skipped: kitchen secret required');
+    console.log('Polling skipped: kitchen secret required');
     return;
   }
-  socket = io(url, {
-    auth: { secret },
-    query: { secret },
-    transports: ['polling'],
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 10000,
-  });
-  socket.on('order:new', onOrderNew);
-  socket.on('order:print', onOrderPrint);
-  socket.on('order:updated', onOrderUpdated);
-  socket.on('connect', () => {
-    connected = true;
-    connectionError = null;
-    clearReconnectFallback();
-    stopPolling();
-    lastPollSince = null;
-    startLivenessCheck();
-    console.log('Printer agent connected to backend');
-    notify();
-  });
-  socket.on('disconnect', (reason) => {
-    connected = false;
-    connectionError = reason || 'Disconnected';
-    clearLivenessCheck();
-    notify();
-    clearReconnectFallback();
-    startPolling();
-  });
-  socket.on('connect_error', (e) => {
-    connected = false;
-    connectionError = e?.message || (e && String(e)) || 'Connection failed';
-    notify();
-    if (connectionError) console.error('Backend socket error:', connectionError);
-    schedulePollingFallback();
-  });
+  connected = true;
+  lastPollSince = null;
+  startPolling();
+  notify();
 }
 
 function disconnect() {
-  clearLivenessCheck();
-  clearReconnectFallback();
   stopPolling();
   clearRetryTimer();
-  if (socket) {
-    socket.removeAllListeners();
-    socket.disconnect();
-    socket = null;
-  }
   connected = false;
+  connectionError = null;
   notify();
 }
 

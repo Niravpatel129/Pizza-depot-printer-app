@@ -25,7 +25,7 @@ function renderStatus(status) {
   const meta = document.getElementById('statusMeta');
   const hint = document.getElementById('statusHint');
   if (!pill || !text || !meta) return;
-  const { connected, queueLength, lastPrintedAt, printError, connectionError, retryScheduled, nextRetryAt } = status || {};
+  const { connected, queueLength, lastPrintedAt, lastPolledAt, printError, connectionError, retryScheduled, nextRetryAt } = status || {};
   const hasPrintError = !!printError;
   const hasBackendError = !connected;
   let statusLabel;
@@ -39,7 +39,8 @@ function renderStatus(status) {
   pill.className = 'status-pill ' + (connected ? 'connected' : 'disconnected') + (hasPrintError ? ' print-error' : '');
   text.textContent = statusLabel;
   const parts = [`${queueLength ?? 0} in queue`];
-  if (lastPrintedAt) parts.push(`Last: ${new Date(lastPrintedAt).toLocaleTimeString()}`);
+  if (lastPolledAt) parts.push(`Polling: ${new Date(lastPolledAt).toLocaleTimeString()}`);
+  if (lastPrintedAt) parts.push(`Last print: ${new Date(lastPrintedAt).toLocaleTimeString()}`);
   if (hasPrintError && connected) parts.push('Backend OK');
   if (hasPrintError && retryScheduled && nextRetryAt) {
     const retryIn = Math.max(0, Math.ceil((new Date(nextRetryAt) - Date.now()) / 1000));
