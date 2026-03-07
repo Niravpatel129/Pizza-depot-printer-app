@@ -129,8 +129,9 @@ function orderToReceiptLines(order, width) {
 
 function buildReceipt(orderOrLines, opts) {
   const width = getWidth(opts);
-  const data = orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines) ? orderOrLines : {};
-  const header = buildHeader(data, width);
+  const orderData = orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines) ? orderOrLines : {};
+  const receiptData = { ...orderData, ...opts };
+  const header = buildHeader(receiptData, width);
   let body;
   if (orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines)) {
     if (orderOrLines.lines?.length) body = orderOrLines.lines.join('\n');
@@ -143,17 +144,18 @@ function buildReceipt(orderOrLines, opts) {
   } else {
     body = '(no content)';
   }
-  const footer = buildFooter(data, width);
+  const footer = buildFooter(receiptData, width);
   const parts = [header, body, footer].filter(Boolean);
   return parts.join('\n\n');
 }
 
 const { buildRawReceipt } = require('./escpos');
 
-const RAW_RECEIPT_WIDTH = 24;
+const DEFAULT_RAW_RECEIPT_WIDTH = 48;
 
 function buildReceiptBuffer(orderOrLines, opts) {
-  const rawOpts = { ...opts, receiptWidth: RAW_RECEIPT_WIDTH };
+  const w = opts?.receiptWidth != null ? Number(opts.receiptWidth) : DEFAULT_RAW_RECEIPT_WIDTH;
+  const rawOpts = { ...opts, receiptWidth: Math.max(16, Math.min(64, w)) || DEFAULT_RAW_RECEIPT_WIDTH };
   const text = buildReceipt(orderOrLines, rawOpts);
   const order = orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines) ? orderOrLines : null;
   const barcodeData = order

@@ -11,6 +11,12 @@ const DEFAULTS = {
   kitchenSecret: '',
   pollIntervalMs: 10000,
   port: 3847,
+  receiptStoreName: '',
+  receiptAddressLine1: '',
+  receiptAddressLine2: '',
+  receiptFooterMessage: '',
+  receiptFooterWebsite: '',
+  receiptWidth: 48,
 };
 
 function loadConfig() {

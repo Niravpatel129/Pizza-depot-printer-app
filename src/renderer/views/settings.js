@@ -17,6 +17,7 @@ import {
   retryPrint,
   saveConfig,
   setPaused,
+  getReceiptPreview,
 } from '../api';
 
 function renderStatus(status) {
@@ -101,6 +102,19 @@ function showToast(message, type = 'info') {
   }, 3500);
 }
 
+function showReceiptPreview(text) {
+  const overlay = document.getElementById('receiptPreviewOverlay');
+  const pre = document.getElementById('receiptPreviewText');
+  if (!overlay || !pre) return;
+  pre.textContent = text || '(No receipt content)';
+  overlay.classList.add('open');
+}
+
+function closeReceiptPreview() {
+  const overlay = document.getElementById('receiptPreviewOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
 function orderDetailsLine(order) {
   const parts = [];
   if (order.storeName) parts.push(order.storeName);
@@ -163,6 +177,16 @@ function renderOrderList(orders, emptyMessage) {
     }
     li.appendChild(num);
     li.appendChild(content);
+    const btnWrap = document.createElement('div');
+    btnWrap.className = 'order-actions';
+    const previewBtn = document.createElement('button');
+    previewBtn.type = 'button';
+    previewBtn.className = 'btn-preview';
+    previewBtn.textContent = 'Show preview';
+    previewBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      getReceiptPreview(order).then((text) => showReceiptPreview(text));
+    });
     const reprintBtn = document.createElement('button');
     reprintBtn.type = 'button';
     reprintBtn.className = 'btn-reprint';
@@ -197,7 +221,9 @@ function renderOrderList(orders, emptyMessage) {
           }, REPRINT_COOLDOWN_MS);
         });
     });
-    li.appendChild(reprintBtn);
+    btnWrap.appendChild(previewBtn);
+    btnWrap.appendChild(reprintBtn);
+    li.appendChild(btnWrap);
     list.appendChild(li);
   });
 }
@@ -338,10 +364,18 @@ export function mountSettings() {
       });
       select.value = config?.printer || '';
     }
-    const kitchenSecret = document.getElementById('kitchenSecret');
-    const pollIntervalMs = document.getElementById('pollIntervalMs');
-    if (kitchenSecret) kitchenSecret.value = config?.kitchenSecret || '';
-    if (pollIntervalMs) pollIntervalMs.value = config?.pollIntervalMs ?? 10000;
+    const setVal = (id, val, def = '') => {
+      const el = document.getElementById(id);
+      if (el) el.value = val != null && val !== '' ? String(val) : def;
+    };
+    setVal('kitchenSecret', config?.kitchenSecret);
+    setVal('pollIntervalMs', config?.pollIntervalMs ?? 10000);
+    setVal('receiptStoreName', config?.receiptStoreName);
+    setVal('receiptAddressLine1', config?.receiptAddressLine1);
+    setVal('receiptAddressLine2', config?.receiptAddressLine2);
+    setVal('receiptFooterMessage', config?.receiptFooterMessage);
+    setVal('receiptFooterWebsite', config?.receiptFooterWebsite);
+    setVal('receiptWidth', config?.receiptWidth ?? 48);
   });
   const saveBtn = document.getElementById('save');
   if (saveBtn) {
@@ -349,6 +383,15 @@ export function mountSettings() {
       const select = document.getElementById('printer');
       const kitchenSecret = document.getElementById('kitchenSecret');
       const pollIntervalMs = document.getElementById('pollIntervalMs');
+      const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+      };
+      const getNum = (id, min, max, def) => {
+        const el = document.getElementById(id);
+        const n = el ? parseInt(el.value, 10) : def;
+        return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def;
+      };
       const newPrinter = select ? select.value.trim() : '';
       const current = await getConfig();
       const currentPrinter = (current?.printer ?? '').trim();
@@ -360,6 +403,12 @@ export function mountSettings() {
         printer: newPrinter,
         kitchenSecret: kitchenSecret ? kitchenSecret.value : '',
         pollIntervalMs: Number.isFinite(pollMs) ? Math.max(3000, Math.min(120000, pollMs)) : 10000,
+        receiptStoreName: getVal('receiptStoreName'),
+        receiptAddressLine1: getVal('receiptAddressLine1'),
+        receiptAddressLine2: getVal('receiptAddressLine2'),
+        receiptFooterMessage: getVal('receiptFooterMessage'),
+        receiptFooterWebsite: getVal('receiptFooterWebsite'),
+        receiptWidth: getNum('receiptWidth', 24, 64, 48),
       });
       showToast('Settings saved', 'success');
     };
@@ -397,6 +446,12 @@ export function mountSettings() {
     }
   });
   getPrintQueue().then(renderQueue);
+  const previewOverlay = document.getElementById('receiptPreviewOverlay');
+  const previewCloseBtn = document.getElementById('receiptPreviewClose');
+  if (previewCloseBtn) previewCloseBtn.addEventListener('click', closeReceiptPreview);
+  if (previewOverlay) {
+    previewOverlay.addEventListener('click', (e) => { if (e.target === previewOverlay) closeReceiptPreview(); });
+  }
   const retryPrintBtn = document.getElementById('retryPrintBtn');
   if (retryPrintBtn) {
     retryPrintBtn.addEventListener('click', () => {

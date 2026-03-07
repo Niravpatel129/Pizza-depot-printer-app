@@ -101,7 +101,10 @@ async function processNext() {
     printError = null;
     printQueue.shift();
     const printedId = item.id ?? normalizeOrderId(item.order);
-    if (printedId) printedOrderIds.add(printedId);
+    if (printedId) {
+      printedOrderIds.add(printedId);
+      markOrderPrinted(printedId).catch((e) => console.error('Mark printed failed:', e.message));
+    }
     lastPrintedAt = new Date().toISOString();
     const printedEntry = { ...item, printedAt: lastPrintedAt };
     recentlyPrinted.push(printedEntry);
@@ -127,6 +130,30 @@ async function processNext() {
 function normalizeOrderId(order) {
   const id = order?._id ?? order?.id ?? order?.orderId;
   return id != null ? String(id) : null;
+}
+
+function markOrderPrinted(orderId) {
+  const config = loadConfig();
+  const base = (API_BASE_URL || '').replace(/\/$/, '');
+  const secret = config.kitchenSecret || '';
+  if (!base || !secret || !orderId) return Promise.resolve();
+  const pathStr = `/api/kitchen/orders/${encodeURIComponent(orderId)}?secret=${encodeURIComponent(secret)}`;
+  const url = new URL(pathStr, base);
+  const protocol = url.protocol === 'https:' ? https : http;
+  const body = JSON.stringify({ printed: true });
+  return new Promise((resolve, reject) => {
+    const req = protocol.request(url.toString(), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, (res) => {
+      res.on('data', () => {});
+      res.on('end', () => resolve());
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('timeout')); });
+    req.write(body);
+    req.end();
+  });
 }
 
 function addOrderToQueue(order) {
@@ -196,6 +223,7 @@ function fetchKitchenOrders() {
   const pathStr = `/api/kitchen/orders?secret=${encodeURIComponent(secret)}&limit=50${since}`;
   const url = new URL(pathStr, base);
   const protocol = url.protocol === 'https:' ? https : http;
+  const wasFirstPoll = lastPollSince == null;
   const req = protocol.get(url.toString(), (res) => {
     let data = '';
     res.on('data', (chunk) => (data += chunk));
@@ -209,7 +237,12 @@ function fetchKitchenOrders() {
         orders.forEach((o) => {
           const u = o.updatedAt || o.createdAt;
           if (u && (!maxUpdated || u > maxUpdated)) maxUpdated = u;
-          addOrderToQueue(o);
+          if (wasFirstPoll) {
+            const id = normalizeOrderId(o);
+            if (id) printedOrderIds.add(id);
+          } else {
+            addOrderToQueue(o);
+          }
         });
         if (maxUpdated) lastPollSince = maxUpdated;
         notify();

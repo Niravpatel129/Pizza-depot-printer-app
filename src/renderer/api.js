@@ -30,6 +30,10 @@ export function reprintOrder(order) {
   return typeof window.printerAgent !== 'undefined' ? window.printerAgent.reprintOrder(order) : Promise.resolve();
 }
 
+export function getReceiptPreview(order) {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.getReceiptPreview(order) : Promise.resolve('');
+}
+
 export function setPaused(paused) {
   if (typeof window.printerAgent !== 'undefined') {
     window.printerAgent.setPaused(paused);

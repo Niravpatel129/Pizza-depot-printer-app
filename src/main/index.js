@@ -75,6 +75,18 @@ ipcMain.handle('reprint-order', (_, order) => {
   }
 });
 
+const { buildReceipt } = require('./receiptFormatter');
+ipcMain.handle('get-receipt-preview', (_, order) => {
+  try {
+    if (!order || typeof order !== 'object') return '';
+    const cfg = config.loadConfig();
+    return buildReceipt(order, cfg);
+  } catch (err) {
+    console.error('get-receipt-preview error', err);
+    return '';
+  }
+});
+
 app.whenReady().then(() => {
   powerSaveId = powerSaveBlocker.start('prevent-app-suspension');
   server.createServer(dialog);
