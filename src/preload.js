@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('printerAgent', {
   getOrderList: (opts) => ipcRenderer.invoke('get-order-list', opts),
   reprintOrder: (order) => ipcRenderer.invoke('reprint-order', order),
   setPaused: (paused) => ipcRenderer.send('set-paused', paused),
+  retryPrint: () => ipcRenderer.invoke('retry-print'),
   onPrintQueueUpdate: (fn) => {
     ipcRenderer.on('print-queue-update', (_, data) => fn(data));
   },

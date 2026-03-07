@@ -13,6 +13,7 @@ import {
   onLogHistory,
   onPrintQueueUpdate,
   reprintOrder,
+  retryPrint,
   saveConfig,
   setPaused,
 } from '../api';
@@ -26,26 +27,36 @@ function renderStatus(status) {
   const { connected, queueLength, lastPrintedAt, printError, retryScheduled, nextRetryAt } = status || {};
   const hasPrintError = !!printError;
   pill.className = 'status-pill ' + (connected ? 'connected' : 'disconnected') + (hasPrintError ? ' print-error' : '');
-  text.textContent = connected ? 'Connected' : 'Disconnected';
+  text.textContent = hasPrintError ? 'Printer unavailable' : (connected ? 'Connected' : 'Disconnected');
   const parts = [`${queueLength ?? 0} in queue`];
   if (lastPrintedAt) parts.push(`Last: ${new Date(lastPrintedAt).toLocaleTimeString()}`);
+  if (hasPrintError && connected) parts.push('Backend connected');
   if (hasPrintError && retryScheduled && nextRetryAt) {
     const retryIn = Math.max(0, Math.ceil((new Date(nextRetryAt) - Date.now()) / 1000));
     parts.push(`Retry in ${retryIn}s`);
   }
   meta.textContent = parts.join(' · ');
-  if (hint) {
+  const errorBox = document.getElementById('printErrorBox');
+  const errorMsg = document.getElementById('printErrorMessage');
+  if (errorBox && errorMsg) {
+    errorBox.style.display = hasPrintError ? 'flex' : 'none';
     if (hasPrintError) {
-      hint.textContent = retryScheduled
+      errorMsg.textContent = retryScheduled
         ? `${printError}. Retrying automatically every 15s until printer is available.`
         : printError;
+    }
+  }
+  if (hint) {
+    if (hasPrintError) {
+      hint.style.display = 'none';
     } else {
+      hint.style.display = '';
       hint.textContent = connected
         ? 'Receiving orders from backend.'
         : 'Add your kitchen secret in the Kitchen section above and click Save to connect.';
     }
     hint.classList.toggle('connected', !!connected);
-    hint.classList.toggle('print-error', hasPrintError);
+    hint.classList.toggle('print-error', false);
   }
 }
 
@@ -388,6 +399,12 @@ export function mountSettings() {
     }
   });
   getPrintQueue().then(renderQueue);
+  const retryPrintBtn = document.getElementById('retryPrintBtn');
+  if (retryPrintBtn) {
+    retryPrintBtn.addEventListener('click', () => {
+      retryPrint().then(() => getStatus().then(renderStatus));
+    });
+  }
 
   function loadOrderList() {
     const empty = document.getElementById('orderListEmpty');

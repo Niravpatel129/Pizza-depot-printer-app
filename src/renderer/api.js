@@ -36,6 +36,10 @@ export function setPaused(paused) {
   }
 }
 
+export function retryPrint() {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.retryPrint() : Promise.resolve();
+}
+
 export function onPrintQueueUpdate(fn) {
   if (typeof window.printerAgent !== 'undefined') {
     window.printerAgent.onPrintQueueUpdate(fn);

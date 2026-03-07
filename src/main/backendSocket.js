@@ -79,6 +79,15 @@ function setPaused(paused) {
   if (!isPaused && printQueue.length > 0) processNext();
 }
 
+function retryPrintNow() {
+  clearRetryTimer();
+  if (printQueue.length > 0 && !isPaused) {
+    printError = null;
+    notify();
+    setImmediate(processNext);
+  }
+}
+
 function setNotify(fn) {
   notifyFn = fn;
   if (fn) fn({ queue: getQueue(), status: getStatus() });
@@ -354,4 +363,4 @@ function disconnect() {
   notify();
 }
 
-module.exports = { connect, disconnect, getQueue, getStatus, setPaused, setNotify, getOrderList, reprintOrder };
+module.exports = { connect, disconnect, getQueue, getStatus, setPaused, setNotify, getOrderList, reprintOrder, retryPrintNow };

@@ -129,6 +129,18 @@
     }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-primary:active { transform: scale(.98); }
+    .btn-secondary {
+      flex-shrink: 0;
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #92400e;
+      background: #fff;
+      border: 1px solid #f59e0b;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { background: #fffbeb; }
     .footer-actions {
       position: fixed;
       bottom: 0;
@@ -190,6 +202,21 @@
     }
     .status-hint.connected { display: none; }
     .status-hint.print-error { display: block; color: #b45309; }
+    .print-error-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      color: #92400e;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .print-error-box span { flex: 1; }
     .toggle-row {
       display: flex;
       align-items: center;
@@ -457,6 +484,10 @@
         <span id="statusMeta" class="status-meta">—</span>
       </div>
       <p id="statusHint" class="status-hint">Add your kitchen secret in the Kitchen section above and click Save to connect.</p>
+      <div id="printErrorBox" class="print-error-box" style="display: none;" role="alert">
+        <span id="printErrorMessage"></span>
+        <button type="button" class="btn-secondary" id="retryPrintBtn">Try again</button>
+      </div>
       <div class="toggle-row">
         <div>
           <p class="toggle-label">Pause printing</p>
