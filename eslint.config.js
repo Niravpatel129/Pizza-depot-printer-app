@@ -40,4 +40,12 @@ module.exports = [
       globals: { ...globals.node, ...globals.jest },
     },
   },
+  {
+    files: ['forge.config.js', '*.config.js'],
+    languageOptions: {
+      ecmaVersion: 2021,
+      sourceType: 'commonjs',
+      globals: { ...globals.node },
+    },
+  },
 ];
