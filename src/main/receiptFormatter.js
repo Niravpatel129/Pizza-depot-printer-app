@@ -169,23 +169,44 @@ function buildReceipt(orderOrLines, opts) {
   return '(no content)';
 }
 
-const { buildRawReceipt } = require('./escpos');
+const { buildReceiptBufferFromRows } = require('./escposDriver');
 
 const DEFAULT_RAW_RECEIPT_WIDTH = 48;
+
+function getReceiptRows(orderOrLines, opts) {
+  const w = opts?.receiptWidth != null ? Number(opts.receiptWidth) : DEFAULT_RAW_RECEIPT_WIDTH;
+  const rawOpts = { ...opts, receiptWidth: Math.max(16, Math.min(64, w)) || DEFAULT_RAW_RECEIPT_WIDTH };
+  if (orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines)) {
+    if (orderOrLines.lines?.length) {
+      return orderOrLines.lines.map((line) => ({ type: 'text', value: line, align: 'left', bold: false }));
+    }
+    if (orderOrLines.receipt_lines?.length || orderOrLines.receiptLines?.length) {
+      const lines = orderOrLines.receipt_lines ?? orderOrLines.receiptLines ?? [];
+      return lines.map((line) => ({ type: 'text', value: line, align: 'left', bold: false }));
+    }
+    const receiptData = { ...orderOrLines, ...(orderOrLines.receipt || {}), ...opts };
+    return receiptToRows(receiptData, { ...rawOpts, receiptWidth: getWidth(rawOpts) });
+  }
+  if (Array.isArray(orderOrLines) && orderOrLines.length) {
+    return orderOrLines.map((line) => ({ type: 'text', value: line, align: 'left', bold: false }));
+  }
+  return [{ type: 'text', value: '(no content)', align: 'left', bold: false }];
+}
 
 function buildReceiptBuffer(orderOrLines, opts) {
   const w = opts?.receiptWidth != null ? Number(opts.receiptWidth) : DEFAULT_RAW_RECEIPT_WIDTH;
   const rawOpts = { ...opts, receiptWidth: Math.max(16, Math.min(64, w)) || DEFAULT_RAW_RECEIPT_WIDTH };
-  const text = buildReceipt(orderOrLines, rawOpts);
+  const rows = getReceiptRows(orderOrLines, rawOpts);
   const order = orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines) ? orderOrLines : null;
   const barcodeData = order
     ? (order.orderNumber ?? order.order_id ?? order._id ?? order.id ?? order.orderId ?? '')
     : '';
-  const escposOpts = {
+  return buildReceiptBufferFromRows(rows, {
+    ...rawOpts,
     supportsCut: opts?.supportsCut !== false,
     supportsDrawerKick: !!opts?.supportsDrawerKick,
-  };
-  return buildRawReceipt(text, barcodeData ? String(barcodeData).replace(/^#/, '') : null, escposOpts);
+    barcodeData: barcodeData ? String(barcodeData).replace(/^#/, '') : null,
+  });
 }
 
 module.exports = { buildReceipt, buildReceiptBuffer, buildHeader, buildFooter, orderToReceiptLines, receiptToRows, rowsToPlainText };

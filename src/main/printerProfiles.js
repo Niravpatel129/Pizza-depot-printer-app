@@ -7,7 +7,7 @@ function createDefaultProfile(overrides = {}) {
     name,
     displayName: overrides.displayName ?? name,
     connection: overrides.connection ?? 'usb',
-    protocol: overrides.protocol ?? overrides.strategy ?? 'escpos',
+    protocol: 'escpos',
     width: overrides.width ?? overrides.paperWidth ?? 80,
     supportsCut: overrides.supportsCut ?? true,
     supportsDrawerKick: overrides.supportsDrawerKick ?? false,
@@ -51,16 +51,14 @@ function getActiveProfile(config) {
 
 function normalizeProfile(p) {
   const connection = ['usb', 'network', 'windows-shared', 'windows'].includes(p.connection) ? p.connection : 'usb';
-  const rawProtocol = p.strategy ?? p.protocol;
-  const protocol = rawProtocol === 'raw' ? 'generic-raw' : (['escpos', 'html', 'generic-raw'].includes(rawProtocol) ? rawProtocol : 'escpos');
   const width = p.width === 58 || p.width === 80 ? p.width : (p.paperWidth === 58 ? 58 : 80);
   return {
     id: p.id ?? randomUUID(),
     name: String(p.name ?? 'Unnamed').trim() || 'Unnamed',
     displayName: p.displayName != null ? String(p.displayName).trim() : (String(p.name ?? 'Unnamed').trim() || 'Unnamed'),
     connection,
-    protocol,
-    strategy: protocol,
+    protocol: 'escpos',
+    strategy: 'escpos',
     role: ['front', 'kitchen', 'label', 'generic'].includes(p.role) ? p.role : 'generic',
     width,
     paperWidth: width,

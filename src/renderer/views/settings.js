@@ -373,7 +373,6 @@ function renderProfilesTable(config, printers) {
     const tr = document.createElement('tr');
     tr.dataset.profileId = p.id;
     const connectionOpts = ['usb', 'network', 'windows-shared'].map((c) => `<option value="${c}" ${p.connection === c ? 'selected' : ''}>${c}</option>`).join('');
-    const protocolOpts = ['escpos', 'html', 'generic-raw'].map((c) => `<option value="${c}" ${p.protocol === c ? 'selected' : ''}>${c}</option>`).join('');
     const widthOpts = [58, 80].map((w) => `<option value="${w}" ${p.width === w ? 'selected' : ''}>${w}mm</option>`).join('');
     const deviceOpts = ['<option value="">System default</option>', ...printers.map((pr) => {
       const val = escapeHtml(String(pr.name || ''));
@@ -384,7 +383,6 @@ function renderProfilesTable(config, printers) {
     tr.innerHTML = `
       <td><input type="text" name="profileName" value="${escapeHtml(String(p.name || ''))}" placeholder="Profile name" /></td>
       <td><select name="profileConnection">${connectionOpts}</select></td>
-      <td><select name="profileProtocol">${protocolOpts}</select></td>
       <td><select name="profileWidth">${widthOpts}</select></td>
       <td><input type="checkbox" name="profileCut" ${p.supportsCut ? 'checked' : ''} /></td>
       <td><input type="checkbox" name="profileDrawer" ${p.supportsDrawerKick ? 'checked' : ''} /></td>
@@ -436,7 +434,6 @@ export function mountSettings() {
         id: newId,
         name: 'New profile',
         connection: 'usb',
-        protocol: 'escpos',
         width: 80,
         supportsCut: true,
         supportsDrawerKick: false,
@@ -478,12 +475,11 @@ export function mountSettings() {
           const id = row.dataset.profileId;
           const name = row.querySelector('[name="profileName"]')?.value?.trim() || 'Unnamed';
           const connection = row.querySelector('[name="profileConnection"]')?.value || 'usb';
-          const protocol = row.querySelector('[name="profileProtocol"]')?.value || 'escpos';
           const width = parseInt(row.querySelector('[name="profileWidth"]')?.value, 10) === 58 ? 58 : 80;
           const supportsCut = row.querySelector('[name="profileCut"]')?.checked ?? true;
           const supportsDrawerKick = row.querySelector('[name="profileDrawer"]')?.checked ?? false;
           const deviceName = row.querySelector('[name="profileDevice"]')?.value?.trim() || '';
-          profiles.push({ id, name, connection, protocol, width, supportsCut, supportsDrawerKick, deviceName });
+          profiles.push({ id, name, connection, protocol: 'escpos', width, supportsCut, supportsDrawerKick, deviceName });
         });
       }
       const activePrinterProfileId = activeSelect?.value?.trim() || profiles[0]?.id || '';

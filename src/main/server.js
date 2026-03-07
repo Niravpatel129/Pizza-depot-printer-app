@@ -1,6 +1,6 @@
 const http = require('http');
 const { loadConfig } = require('./config');
-const { doPrint } = require('./print');
+const { printJob } = require('./print');
 
 let currentPort = 3847;
 let httpServer = null;
@@ -24,15 +24,17 @@ function createServer(dialog) {
       try {
         const data = body ? JSON.parse(body) : {};
         const lines = data.lines ?? (data.text ? data.text.split('\n') : ['(no content)']);
-        const receipt = [
-          '--------------------------------',
-          ...lines,
-          '--------------------------------',
-          `Printed at ${new Date().toISOString()}`,
-        ].join('\n');
-        console.log('\n' + receipt + '\n');
+        const job = {
+          lines: [
+            '--------------------------------',
+            ...lines,
+            '--------------------------------',
+            `Printed at ${new Date().toISOString()}`,
+          ],
+        };
+        console.log('\n' + job.lines.join('\n') + '\n');
         const config = loadConfig();
-        const result = await doPrint(receipt, config);
+        const result = await printJob(job, config);
         if (result && result.ok) {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, printed: true }));
