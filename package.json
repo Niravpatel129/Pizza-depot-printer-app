@@ -13,6 +13,7 @@
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
+    "rebuild:printer": "electron-rebuild -f -w printer",
     "publish": "electron-forge publish",
     "lint": "eslint src --max-warnings 0",
     "test": "jest",
