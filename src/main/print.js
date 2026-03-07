@@ -3,6 +3,16 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { BrowserWindow } = require('electron');
+const { getActiveProfile, getProfileById, widthToCharWidth } = require('./printerProfiles');
+const { buildReceipt, buildReceiptBuffer } = require('./receiptFormatter');
+const { normalizeReceiptJob } = require('./printing/types');
+const logger = require('./logger');
+
+function getPrinterName(config) {
+  const profile = config?._printProfile ?? getActiveProfile(config);
+  const name = (profile && profile.deviceName) || config?.printer;
+  return typeof name === 'string' ? name.trim() : '';
+}
 
 let printerModule = null;
 let PosPrinter = null;
@@ -58,7 +68,7 @@ function buildReceiptPrintHtml(receiptText) {
 }
 
 function doPrintReceiptViaHtml(receiptText, config) {
-  const printerName = config?.printer?.trim();
+  const printerName = getPrinterName(config) || undefined;
   const html = buildReceiptPrintHtml(receiptText);
   const url = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
   const win = new BrowserWindow({
@@ -104,7 +114,7 @@ function stripControlChars(buf) {
 }
 
 function posPrintOptions(config) {
-  const printerName = config?.printer?.trim();
+  const printerName = getPrinterName(config) || undefined;
   return {
     preview: false,
     silent: true,
@@ -117,7 +127,7 @@ function posPrintOptions(config) {
 }
 
 function doPrintRaw(buffer, config) {
-  const printerName = config?.printer?.trim();
+  const printerName = getPrinterName(config) || undefined;
   if (process.platform === 'win32') {
     if (printerModule && typeof printerModule.printDirect === 'function') {
       return new Promise((resolve) => {
@@ -173,7 +183,7 @@ function doPrintRaw(buffer, config) {
   try {
     tmpFile = path.join(os.tmpdir(), `receipt-raw-${Date.now()}.bin`);
     fs.writeFileSync(tmpFile, buffer);
-    const printerArg = printerName ? ` -d ${JSON.stringify(printerName)}` : '';
+    const printerArg = printerName ? ` -d ${JSON.stringify(String(printerName))}` : '';
     const mediaOpt = process.platform === 'darwin' ? ' -o media=Custom.80x297mm' : ' -o media=80mm';
     execSync(`lp -o raw${mediaOpt}${printerArg} ${JSON.stringify(tmpFile)}`, { stdio: 'pipe' });
     return Promise.resolve({ ok: true });
@@ -213,7 +223,7 @@ function doPrint(receipt, config) {
       try {
         tmpFile = path.join(os.tmpdir(), `receipt-${Date.now()}.txt`);
         fs.writeFileSync(tmpFile, receipt, 'utf8');
-        const winPrinterName = config?.printer?.trim();
+        const winPrinterName = getPrinterName(config);
         const escapeForCmd = (s) => JSON.stringify(s).replace(/"/g, '\\"');
         const printerArg = winPrinterName ? ` -Name ${escapeForCmd(winPrinterName)}` : '';
         execSync(
@@ -240,7 +250,7 @@ function doPrint(receipt, config) {
   try {
     tmpFile = path.join(os.tmpdir(), `receipt-${Date.now()}.txt`);
     fs.writeFileSync(tmpFile, receipt, 'utf8');
-    const printerArg = config?.printer ? ` -d ${JSON.stringify(config.printer)}` : '';
+    const printerArg = getPrinterName(config) ? ` -d ${JSON.stringify(getPrinterName(config))}` : '';
     execSync(`lp${printerArg} ${JSON.stringify(tmpFile)}`, { stdio: 'pipe' });
     return Promise.resolve({ ok: true });
   } catch (e) {
@@ -258,4 +268,52 @@ function doPrint(receipt, config) {
   }
 }
 
-module.exports = { doPrint };
+function logPrintAttempt(entry) {
+  const msg = [
+    'Print',
+    entry.ok ? 'OK' : 'FAIL',
+    `job=${entry.jobId ?? '?'}`,
+    `profile=${entry.profileId ?? '?'}`,
+    `strategy=${entry.strategy ?? '?'}`,
+    entry.durationMs != null ? `duration=${entry.durationMs}ms` : '',
+    entry.error ? `error=${entry.error}` : '',
+  ].filter(Boolean).join(' ');
+  logger.log(entry.ok ? 'log' : 'error', msg);
+}
+
+async function printJob(job, config) {
+  const startedAt = Date.now();
+  const normalized = normalizeReceiptJob(job, config);
+  const jobId = normalized.jobId;
+  const profileId = normalized.printerProfileId || config?.activePrinterProfileId;
+  const profile = (profileId && getProfileById(config, profileId)) || getActiveProfile(config);
+  const strategy = profile.strategy ?? profile.protocol ?? 'escpos';
+  const opts = {
+    ...config,
+    receiptWidth: widthToCharWidth(profile.width),
+    supportsCut: profile.supportsCut,
+    supportsDrawerKick: profile.supportsDrawerKick,
+  };
+  const configForPrint = { ...config, _printProfile: profile };
+  let receipt;
+  if (strategy === 'html') {
+    receipt = buildReceipt(normalized._raw ?? normalized.receipt ?? job, opts);
+  } else {
+    receipt = buildReceiptBuffer(normalized._raw ?? normalized.receipt ?? job, opts);
+  }
+  const result = await doPrint(receipt, configForPrint);
+  const durationMs = Date.now() - startedAt;
+  logPrintAttempt({
+    timestamp: new Date().toISOString(),
+    jobId,
+    profileId: profile.id,
+    profileName: profile.name,
+    strategy,
+    ok: result && result.ok === true,
+    error: result && !result.ok ? result.error : undefined,
+    durationMs,
+  });
+  return result;
+}
+
+module.exports = { doPrint, printJob, buildReceiptPrintHtml, logPrintAttempt };

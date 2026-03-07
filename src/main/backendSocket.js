@@ -1,8 +1,7 @@
 const https = require('https');
 const http = require('http');
 const { loadConfig, API_BASE_URL } = require('./config');
-const { doPrint } = require('./print');
-const { buildReceiptBuffer } = require('./receiptFormatter');
+const { printJob } = require('./print');
 
 const MAX_RECENTLY_PRINTED = 50;
 const RETRY_DELAY_MS = 15000;
@@ -93,8 +92,8 @@ async function processNext() {
   if (isPaused || printQueue.length === 0) return;
   const item = printQueue[0];
   const config = loadConfig();
-  const receipt = buildReceiptBuffer(item.order, config);
-  const result = await doPrint(receipt, config);
+  const job = { ...item.order, _queueId: item.id };
+  const result = await printJob(job, config);
   const ok = result && result.ok === true;
   if (ok) {
     clearRetryTimer();

@@ -7,6 +7,7 @@ module.exports = {
   getOrderList: () => Promise.resolve({ orders: [] }),
   reprintOrder: () => Promise.resolve(),
   getReceiptPreview: () => Promise.resolve(''),
+  testPrint: () => Promise.resolve({ ok: true }),
   setPaused: () => {},
   onPrintQueueUpdate: () => {},
   getLogHistory: () => Promise.resolve([]),

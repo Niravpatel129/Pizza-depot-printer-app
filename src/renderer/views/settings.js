@@ -18,6 +18,7 @@ import {
   saveConfig,
   setPaused,
   getReceiptPreview,
+  testPrint,
 } from '../api';
 
 function renderStatus(status) {
@@ -350,20 +351,56 @@ function renderLogHistory(entries, container) {
   container.scrollTop = container.scrollHeight;
 }
 
+let lastConfig = null;
+let lastPrinters = [];
+
+function renderProfilesTable(config, printers) {
+  const activeSelect = document.getElementById('activePrinterProfile');
+  const tbody = document.getElementById('profilesTableBody');
+  if (!activeSelect || !tbody) return;
+  const profiles = config?.printerProfiles ?? [];
+  const activeId = config?.activePrinterProfileId ?? (profiles[0]?.id ?? '');
+  activeSelect.innerHTML = '<option value="">—</option>';
+  profiles.forEach((p) => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name || 'Unnamed';
+    if (p.id === activeId) opt.selected = true;
+    activeSelect.appendChild(opt);
+  });
+  tbody.innerHTML = '';
+  profiles.forEach((p) => {
+    const tr = document.createElement('tr');
+    tr.dataset.profileId = p.id;
+    const connectionOpts = ['usb', 'network', 'windows-shared'].map((c) => `<option value="${c}" ${p.connection === c ? 'selected' : ''}>${c}</option>`).join('');
+    const protocolOpts = ['escpos', 'html', 'generic-raw'].map((c) => `<option value="${c}" ${p.protocol === c ? 'selected' : ''}>${c}</option>`).join('');
+    const widthOpts = [58, 80].map((w) => `<option value="${w}" ${p.width === w ? 'selected' : ''}>${w}mm</option>`).join('');
+    const deviceOpts = ['<option value="">System default</option>', ...printers.map((pr) => {
+      const val = escapeHtml(String(pr.name || ''));
+      const label = escapeHtml(pr.displayName || pr.name || pr.description || pr.name || '');
+      const sel = (p.deviceName || '') === (pr.name || '') ? ' selected' : '';
+      return `<option value="${val}"${sel}>${label}</option>`;
+    })].join('');
+    tr.innerHTML = `
+      <td><input type="text" name="profileName" value="${escapeHtml(String(p.name || ''))}" placeholder="Profile name" /></td>
+      <td><select name="profileConnection">${connectionOpts}</select></td>
+      <td><select name="profileProtocol">${protocolOpts}</select></td>
+      <td><select name="profileWidth">${widthOpts}</select></td>
+      <td><input type="checkbox" name="profileCut" ${p.supportsCut ? 'checked' : ''} /></td>
+      <td><input type="checkbox" name="profileDrawer" ${p.supportsDrawerKick ? 'checked' : ''} /></td>
+      <td><select name="profileDevice">${deviceOpts}</select></td>
+      <td><button type="button" class="btn-delete-profile" data-profile-id="${escapeHtml(String(p.id))}" aria-label="Delete profile">Delete</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 export function mountSettings() {
   onConfig((data) => {
     const { config, printers = [] } = data || {};
-    const select = document.getElementById('printer');
-    if (select) {
-      select.innerHTML = '<option value="">System default</option>';
-      printers.forEach((p) => {
-        const opt = document.createElement('option');
-        opt.value = p.name;
-        opt.textContent = p.displayName || p.name || p.description;
-        select.appendChild(opt);
-      });
-      select.value = config?.printer || '';
-    }
+    lastConfig = config;
+    lastPrinters = printers;
+    renderProfilesTable(config, printers);
     const setVal = (id, val, def = '') => {
       const el = document.getElementById(id);
       if (el) el.value = val != null && val !== '' ? String(val) : def;
@@ -377,10 +414,53 @@ export function mountSettings() {
     setVal('receiptFooterWebsite', config?.receiptFooterWebsite);
     setVal('receiptWidth', config?.receiptWidth ?? 48);
   });
+  const testPrintBtn = document.getElementById('testPrintBtn');
+  if (testPrintBtn) {
+    testPrintBtn.addEventListener('click', async () => {
+      testPrintBtn.disabled = true;
+      try {
+        const res = await testPrint();
+        if (res && res.ok) showToast('Test print sent', 'success');
+        else showToast((res && res.error) || 'Test print failed', 'error');
+      } finally {
+        testPrintBtn.disabled = false;
+      }
+    });
+  }
+  const addProfileBtn = document.getElementById('addPrinterProfile');
+  if (addProfileBtn) {
+    addProfileBtn.addEventListener('click', () => {
+      if (!lastConfig) return;
+      const newId = 'new-' + Date.now();
+      const profiles = [...(lastConfig.printerProfiles || []), {
+        id: newId,
+        name: 'New profile',
+        connection: 'usb',
+        protocol: 'escpos',
+        width: 80,
+        supportsCut: true,
+        supportsDrawerKick: false,
+        deviceName: '',
+      }];
+      lastConfig = { ...lastConfig, printerProfiles: profiles, activePrinterProfileId: lastConfig.activePrinterProfileId || newId };
+      renderProfilesTable(lastConfig, lastPrinters);
+      showToast('Profile added. Save to apply.', 'info');
+    });
+  }
+  document.getElementById('profilesTableBody')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-delete-profile');
+    if (!btn || !lastConfig) return;
+    const id = btn.dataset.profileId;
+    const profiles = (lastConfig.printerProfiles || []).filter((p) => p.id !== id);
+    const activeId = lastConfig.activePrinterProfileId === id ? (profiles[0]?.id ?? '') : lastConfig.activePrinterProfileId;
+    lastConfig = { ...lastConfig, printerProfiles: profiles, activePrinterProfileId: activeId };
+    renderProfilesTable(lastConfig, lastPrinters);
+  });
   const saveBtn = document.getElementById('save');
   if (saveBtn) {
     saveBtn.onclick = async () => {
-      const select = document.getElementById('printer');
+      const activeSelect = document.getElementById('activePrinterProfile');
+      const tbody = document.getElementById('profilesTableBody');
       const kitchenSecret = document.getElementById('kitchenSecret');
       const pollIntervalMs = document.getElementById('pollIntervalMs');
       const getVal = (id) => {
@@ -392,15 +472,30 @@ export function mountSettings() {
         const n = el ? parseInt(el.value, 10) : def;
         return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def;
       };
-      const newPrinter = select ? select.value.trim() : '';
-      const current = await getConfig();
-      const currentPrinter = (current?.printer ?? '').trim();
-      if (newPrinter !== currentPrinter && !confirm(`Are you sure you want to switch to ${newPrinter || 'system default'}?`)) {
-        return;
+      const profiles = [];
+      if (tbody) {
+        tbody.querySelectorAll('tr[data-profile-id]').forEach((row) => {
+          const id = row.dataset.profileId;
+          const name = row.querySelector('[name="profileName"]')?.value?.trim() || 'Unnamed';
+          const connection = row.querySelector('[name="profileConnection"]')?.value || 'usb';
+          const protocol = row.querySelector('[name="profileProtocol"]')?.value || 'escpos';
+          const width = parseInt(row.querySelector('[name="profileWidth"]')?.value, 10) === 58 ? 58 : 80;
+          const supportsCut = row.querySelector('[name="profileCut"]')?.checked ?? true;
+          const supportsDrawerKick = row.querySelector('[name="profileDrawer"]')?.checked ?? false;
+          const deviceName = row.querySelector('[name="profileDevice"]')?.value?.trim() || '';
+          profiles.push({ id, name, connection, protocol, width, supportsCut, supportsDrawerKick, deviceName });
+        });
       }
+      const activePrinterProfileId = activeSelect?.value?.trim() || profiles[0]?.id || '';
+      const current = await getConfig();
       const pollMs = pollIntervalMs ? parseInt(pollIntervalMs.value, 10) : 10000;
+      const activeProfile = profiles.find((p) => p.id === activePrinterProfileId);
+      const printer = activeProfile?.deviceName ?? current?.printer ?? '';
       saveConfig({
-        printer: newPrinter,
+        ...current,
+        printer,
+        printerProfiles: profiles,
+        activePrinterProfileId,
         kitchenSecret: kitchenSecret ? kitchenSecret.value : '',
         pollIntervalMs: Number.isFinite(pollMs) ? Math.max(3000, Math.min(120000, pollMs)) : 10000,
         receiptStoreName: getVal('receiptStoreName'),
@@ -410,6 +505,7 @@ export function mountSettings() {
         receiptFooterWebsite: getVal('receiptFooterWebsite'),
         receiptWidth: getNum('receiptWidth', 24, 64, 48),
       });
+      lastConfig = { ...current, printerProfiles: profiles, activePrinterProfileId };
       showToast('Settings saved', 'success');
     };
   }

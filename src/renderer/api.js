@@ -34,6 +34,10 @@ export function getReceiptPreview(order) {
   return typeof window.printerAgent !== 'undefined' ? window.printerAgent.getReceiptPreview(order) : Promise.resolve('');
 }
 
+export function testPrint() {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.testPrint() : Promise.resolve({ ok: false, error: 'Unavailable' });
+}
+
 export function setPaused(paused) {
   if (typeof window.printerAgent !== 'undefined') {
     window.printerAgent.setPaused(paused);

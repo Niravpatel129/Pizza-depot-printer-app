@@ -141,6 +141,22 @@
       cursor: pointer;
     }
     .btn-secondary:hover { background: #fffbeb; }
+    .profiles-table-wrap { overflow-x: auto; }
+    .profiles-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .profiles-table th, .profiles-table td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .profiles-table th { font-weight: 600; color: var(--muted); }
+    .profiles-table input[type="text"],
+    .profiles-table select { width: 100%; max-width: 120px; padding: 4px 6px; font-size: 12px; }
+    .profiles-table .btn-delete-profile { font-size: 11px; padding: 4px 8px; color: #b91c1c; border-color: #fca5a5; }
+    .profiles-table .btn-delete-profile:hover { background: #fef2f2; }
     .footer-actions {
       position: fixed;
       bottom: 0;
@@ -504,11 +520,33 @@
         <p>Printer Agent</p>
       </header>
       <section class="card">
-        <h2 class="card-title">Printer</h2>
-        <label for="printer">Default printer</label>
-        <select id="printer">
-          <option value="">System default</option>
+        <h2 class="card-title">Printer profiles</h2>
+        <p class="status-meta" style="margin-bottom: 8px;">Preview like a browser. Print like a POS. Use ESC-POS for receipt printers; HTML for standard documents or fallback.</p>
+        <label for="activePrinterProfile">Active profile</label>
+        <select id="activePrinterProfile">
+          <option value="">—</option>
         </select>
+        <div class="profiles-table-wrap" style="margin-top: 12px;">
+          <table class="profiles-table" id="profilesTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Connection</th>
+                <th>Protocol</th>
+                <th>Width</th>
+                <th>Cut</th>
+                <th>Drawer</th>
+                <th>Device</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="profilesTableBody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top: 8px; display: flex; gap: 8px;">
+          <button type="button" class="btn-secondary" id="addPrinterProfile">Add profile</button>
+          <button type="button" class="btn-secondary" id="testPrintBtn">Test print</button>
+        </div>
       </section>
       <section class="card">
         <h2 class="card-title">Receipt</h2>

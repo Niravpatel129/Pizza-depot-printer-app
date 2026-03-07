@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const { app } = require('electron');
+const { migrateConfig } = require('./printerProfiles');
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
 
@@ -8,6 +9,8 @@ const API_BASE_URL = 'https://pizza-depot-backend-91ae077a284d.herokuapp.com';
 
 const DEFAULTS = {
   printer: '',
+  printerProfiles: [],
+  activePrinterProfileId: '',
   kitchenSecret: '',
   pollIntervalMs: 10000,
   port: 3847,
@@ -22,9 +25,10 @@ const DEFAULTS = {
 function loadConfig() {
   try {
     const c = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return { ...DEFAULTS, ...c };
+    const merged = { ...DEFAULTS, ...c };
+    return migrateConfig(merged);
   } catch {
-    return { ...DEFAULTS };
+    return migrateConfig({ ...DEFAULTS });
   }
 }
 

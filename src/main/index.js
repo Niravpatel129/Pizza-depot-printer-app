@@ -76,14 +76,40 @@ ipcMain.handle('reprint-order', (_, order) => {
 });
 
 const { buildReceipt } = require('./receiptFormatter');
+const { getActiveProfile, widthToCharWidth } = require('./printerProfiles');
+const { printJob } = require('./print');
+
 ipcMain.handle('get-receipt-preview', (_, order) => {
   try {
     if (!order || typeof order !== 'object') return '';
     const cfg = config.loadConfig();
-    return buildReceipt(order, cfg);
+    const profile = getActiveProfile(cfg);
+    const opts = { ...cfg, receiptWidth: widthToCharWidth(profile.width) };
+    return buildReceipt(order, opts);
   } catch (err) {
     console.error('get-receipt-preview error', err);
     return '';
+  }
+});
+
+ipcMain.handle('test-print', async () => {
+  try {
+    const cfg = config.loadConfig();
+    const testOrder = {
+      orderNumber: 'TEST',
+      receiptStoreName: cfg.receiptStoreName || 'STORE NAME',
+      receiptAddressLine1: cfg.receiptAddressLine1 || '',
+      receiptAddressLine2: cfg.receiptAddressLine2 || '',
+      receiptFooterMessage: cfg.receiptFooterMessage || 'Thank you!',
+      receiptFooterWebsite: cfg.receiptFooterWebsite || '',
+      items: [{ name: 'Test item', quantity: 1, price: 1.99 }],
+      total: 1.99,
+    };
+    const result = await printJob(testOrder, cfg);
+    return result && result.ok ? { ok: true } : { ok: false, error: (result && result.error) || 'Print failed' };
+  } catch (err) {
+    console.error('test-print error', err);
+    return { ok: false, error: err?.message || String(err) };
   }
 });
 

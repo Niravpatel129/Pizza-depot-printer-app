@@ -1,7 +1,6 @@
 const https = require('https');
 const { loadConfig } = require('./config');
-const { doPrint } = require('./print');
-const { buildReceipt, buildReceiptBuffer } = require('./receiptFormatter');
+const { printJob } = require('./print');
 
 const DEFAULT_BACKEND_URL = 'https://pizza-depot-backend-91ae077a284d.herokuapp.com';
 const POLL_INTERVAL_MS = 5000;
@@ -52,14 +51,12 @@ function poll() {
   const url = (config.backendUrl || DEFAULT_BACKEND_URL).replace(/\/$/, '');
   if (!url) return;
   fetchPrintQueue(url).then(async (data) => {
-    const jobs = data.jobs || data.orders || data.items || Array.isArray(data) ? (data.jobs || data.orders || data.items || data) : [];
-    for (const job of jobs) {
+    const jobs = data.jobs || data.orders || data.items || (Array.isArray(data) ? data : []);
+    const list = Array.isArray(jobs) ? jobs : (jobs.jobs || jobs.orders || jobs.items || []);
+    for (const job of list) {
+      await printJob(job, config);
       const id = job.id || job.orderId || job._id;
-      const receipt = buildReceiptBuffer(job, config);
-      await doPrint(receipt, config);
-      if (id) {
-        markPrinted(url, id).catch((e) => console.error('Mark printed failed:', e.message));
-      }
+      if (id) markPrinted(url, id).catch((e) => console.error('Mark printed failed:', e.message));
     }
   }).catch((e) => {
     if (e.code !== 'ECONNREFUSED' && e.message !== 'timeout') {

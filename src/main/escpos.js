@@ -39,7 +39,19 @@ function feed(n) {
   return Buffer.from([ESC, 0x64, n ?? 3]);
 }
 
-function buildRawReceipt(text, barcodeData) {
+function cut(partial = false) {
+  return Buffer.from([GS, 0x56, partial ? 1 : 0]);
+}
+
+function drawerKick(pin = 0, onMs = 200, offMs = 200) {
+  const t1 = Math.min(255, Math.floor(onMs / 2));
+  const t2 = Math.min(255, Math.floor(offMs / 2));
+  return Buffer.from([ESC, 0x70, pin, t1, t2]);
+}
+
+function buildRawReceipt(text, barcodeData, opts = {}) {
+  const supportsCut = opts.supportsCut !== false;
+  const supportsDrawerKick = !!opts.supportsDrawerKick;
   const parts = [
     init(),
     lineSpacingDefault(),
@@ -63,6 +75,8 @@ function buildRawReceipt(text, barcodeData) {
     parts.push(Buffer.from([LF]));
   }
   parts.push(feed(2));
+  if (supportsDrawerKick) parts.push(drawerKick());
+  if (supportsCut) parts.push(cut());
   return Buffer.concat(parts);
 }
 
