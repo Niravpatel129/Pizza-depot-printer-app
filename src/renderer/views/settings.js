@@ -24,13 +24,22 @@ function renderStatus(status) {
   const meta = document.getElementById('statusMeta');
   const hint = document.getElementById('statusHint');
   if (!pill || !text || !meta) return;
-  const { connected, queueLength, lastPrintedAt, printError, retryScheduled, nextRetryAt } = status || {};
+  const { connected, queueLength, lastPrintedAt, printError, connectionError, retryScheduled, nextRetryAt } = status || {};
   const hasPrintError = !!printError;
+  const hasBackendError = !connected;
+  let statusLabel;
+  if (hasPrintError && connected) {
+    statusLabel = 'Printer error';
+  } else if (hasBackendError) {
+    statusLabel = 'Backend disconnected';
+  } else {
+    statusLabel = 'Connected';
+  }
   pill.className = 'status-pill ' + (connected ? 'connected' : 'disconnected') + (hasPrintError ? ' print-error' : '');
-  text.textContent = hasPrintError ? 'Printer unavailable' : (connected ? 'Connected' : 'Disconnected');
+  text.textContent = statusLabel;
   const parts = [`${queueLength ?? 0} in queue`];
   if (lastPrintedAt) parts.push(`Last: ${new Date(lastPrintedAt).toLocaleTimeString()}`);
-  if (hasPrintError && connected) parts.push('Backend connected');
+  if (hasPrintError && connected) parts.push('Backend OK');
   if (hasPrintError && retryScheduled && nextRetryAt) {
     const retryIn = Math.max(0, Math.ceil((new Date(nextRetryAt) - Date.now()) / 1000));
     parts.push(`Retry in ${retryIn}s`);
@@ -39,23 +48,33 @@ function renderStatus(status) {
   const errorBox = document.getElementById('printErrorBox');
   const errorMsg = document.getElementById('printErrorMessage');
   if (errorBox && errorMsg) {
-    errorBox.style.display = hasPrintError ? 'flex' : 'none';
     if (hasPrintError) {
-      errorMsg.textContent = retryScheduled
-        ? `${printError}. Retrying automatically every 15s until printer is available.`
+      errorBox.style.display = 'flex';
+      const detail = retryScheduled
+        ? `${printError} Retrying automatically every 15s.`
         : printError;
+      errorMsg.textContent = `Printer: ${detail}`;
+    } else {
+      errorBox.style.display = 'none';
     }
   }
   if (hint) {
     if (hasPrintError) {
       hint.style.display = 'none';
-    } else {
+    } else if (hasBackendError) {
       hint.style.display = '';
-      hint.textContent = connected
-        ? 'Receiving orders from backend.'
-        : 'Add your kitchen secret in the Kitchen section above and click Save to connect.';
+      hint.classList.add('backend-error');
+      hint.classList.remove('connected');
+      const backendReason = connectionError
+        ? `Backend: ${connectionError}`
+        : 'Backend: Not connected. Add your kitchen secret in the Kitchen section above and click Save, or check network.';
+      hint.textContent = backendReason;
+    } else {
+      hint.classList.remove('backend-error');
+      hint.style.display = '';
+      hint.textContent = 'Backend connected. Receiving orders.';
+      hint.classList.add('connected');
     }
-    hint.classList.toggle('connected', !!connected);
     hint.classList.toggle('print-error', false);
   }
 }

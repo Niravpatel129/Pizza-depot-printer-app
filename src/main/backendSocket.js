@@ -21,6 +21,7 @@ let notifyFn = null;
 let retryTimer = null;
 let printError = null;
 let nextRetryAt = null;
+let connectionError = null;
 let reconnectFallbackTimer = null;
 let connectionRefreshTimer = null;
 let livenessCheckTimer = null;
@@ -56,6 +57,7 @@ function getStatus() {
     queueLength: printQueue.length,
     lastPrintedAt,
     printError: printError || null,
+    connectionError: connectionError || null,
     retryScheduled: !!retryTimer,
     nextRetryAt: nextRetryAt || null,
   };
@@ -328,6 +330,7 @@ function connect() {
   socket.on('order:updated', onOrderUpdated);
   socket.on('connect', () => {
     connected = true;
+    connectionError = null;
     clearReconnectFallback();
     stopPolling();
     lastPollSince = null;
@@ -336,8 +339,9 @@ function connect() {
     console.log('Printer agent connected to backend');
     notify();
   });
-  socket.on('disconnect', () => {
+  socket.on('disconnect', (reason) => {
     connected = false;
+    connectionError = reason || 'Disconnected';
     clearConnectionRefresh();
     clearLivenessCheck();
     notify();
@@ -346,8 +350,9 @@ function connect() {
   });
   socket.on('connect_error', (e) => {
     connected = false;
+    connectionError = e?.message || (e && String(e)) || 'Connection failed';
     notify();
-    if (e.message) console.error('Backend socket error:', e.message);
+    if (connectionError) console.error('Backend socket error:', connectionError);
   });
 }
 
