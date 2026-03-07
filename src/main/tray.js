@@ -28,7 +28,7 @@ function buildTrayMenu(openSettings, onRestart) {
   return Menu.buildFromTemplate([
     { label: `Printer: ${printerLabel}`, enabled: false },
     { type: 'separator' },
-    { label: 'Set default printer...', click: () => openSettings() },
+    { label: 'Settings', click: () => openSettings() },
     { label: 'Restart server', click: () => onRestart && onRestart() },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() },

@@ -1,22 +1,357 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Printer Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, sans-serif; padding: 12px 16px; margin: 0; }
-    label { display: block; margin-bottom: 4px; font-size: 12px; color: #666; }
-    input, select { width: 100%; padding: 6px 8px; box-sizing: border-box; margin-bottom: 12px; }
-    select { cursor: pointer; }
-    button { padding: 6px 16px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    :root {
+      --bg: #f8fafc;
+      --surface: #fff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #0ea5e9;
+      --accent-hover: #0284c7;
+      --success: #10b981;
+      --success-bg: #d1fae5;
+      --error: #ef4444;
+      --error-bg: #fee2e2;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.06);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.04);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .app {
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .header {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .header p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card:last-of-type { margin-bottom: 0; }
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      margin: 0 0 12px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 12px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+    select:focus { outline: none; border-color: var(--accent); }
+    input[type="text"], input[type="number"], input[type="url"] {
+      width: 100%;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    input[type="number"] { margin-bottom: 12px; }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      font: inherit;
+      font-weight: 500;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:active { transform: scale(.98); }
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 20px;
+    }
+    .status-pill.connected {
+      background: var(--success-bg);
+      color: #047857;
+    }
+    .status-pill.disconnected {
+      background: var(--error-bg);
+      color: #b91c1c;
+    }
+    .status-pill .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-pill.connected .dot { animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    .status-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .toggle-row:last-of-type { border-bottom: none; margin-bottom: 0; }
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      margin: 0;
+    }
+    .toggle-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+      background: var(--border);
+      border-radius: 11px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .switch.checked { background: var(--accent); }
+    .switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: var(--shadow-sm);
+      transition: transform .2s;
+    }
+    .switch.checked::after { transform: translateX(18px); }
+    .queue-wrap {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .queue-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .queue-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+    .queue-list li:last-child { border-bottom: none; }
+    .queue-list li .num {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      min-width: 20px;
+    }
+    .queue-empty {
+      padding: 24px 12px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .debug-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .debug-trigger:hover { color: var(--text); border-color: var(--text-muted); }
+    .debug-popover {
+      display: none;
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #1e293b;
+      overflow: hidden;
+    }
+    .debug-popover.open { display: block; }
+    .debug-popover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #94a3b8;
+      background: #0f172a;
+    }
+    .debug-popover-header button {
+      padding: 4px 8px;
+      font-size: 11px;
+      color: #94a3b8;
+      background: transparent;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .debug-popover-header button:hover { color: #fff; border-color: #64748b; }
+    .debug-log {
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      padding: 10px 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .debug-log .line { margin-bottom: 4px; }
+    .debug-log .line.error { color: #fca5a5; }
+    .debug-log .line.warn { color: #fcd34d; }
+    .debug-log .line .ts { color: #64748b; margin-right: 8px; }
+    .debug-log .line .lvl { margin-right: 6px; font-weight: 600; }
+    .debug-log .line .lvl.log { color: #94a3b8; }
+    .debug-log .line .lvl.warn { color: #fcd34d; }
+    .debug-log .line .lvl.error { color: #fca5a5; }
   </style>
 </head>
 <body>
-  <label>Default printer</label>
-  <select id="printer">
-    <option value="">System default</option>
-  </select>
-  <button id="save">Save</button>
+  <div class="app">
+    <header class="header">
+      <h1>Settings</h1>
+      <p>Printer Agent</p>
+    </header>
+    <section class="card">
+      <h2 class="card-title">Printer</h2>
+      <label for="printer">Default printer</label>
+      <select id="printer">
+        <option value="">System default</option>
+      </select>
+      <button type="button" class="btn-primary" id="save">Save</button>
+    </section>
+    <section class="card">
+      <h2 class="card-title">Connection</h2>
+      <label for="backendUrl">Backend URL</label>
+      <input type="url" id="backendUrl" placeholder="https://your-backend.herokuapp.com" />
+      <label for="serverPort">Server port (local print endpoint)</label>
+      <input type="number" id="serverPort" min="1024" max="65535" placeholder="3847" />
+    </section>
+    <section class="card">
+      <h2 class="card-title">Print queue</h2>
+      <div class="status-bar">
+        <div id="statusPill" class="status-pill disconnected">
+          <span class="dot"></span>
+          <span id="statusText">Disconnected</span>
+        </div>
+        <span id="statusMeta" class="status-meta">—</span>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <p class="toggle-label">Pause printing</p>
+          <p class="toggle-desc">Queue will fill; nothing prints until resumed</p>
+        </div>
+        <div id="pausedSwitch" class="switch" role="switch" aria-checked="false" tabindex="0"></div>
+      </div>
+      <input type="checkbox" id="paused" hidden>
+      <label>Queue</label>
+      <div class="queue-wrap">
+        <ul id="queueList" class="queue-list"></ul>
+        <div id="queueEmpty" class="queue-empty">No jobs in queue</div>
+      </div>
+      <button type="button" class="debug-trigger" id="debugTrigger" aria-expanded="false">Debug logs</button>
+      <div class="debug-popover" id="debugPopover" role="region" aria-label="Debug logs">
+        <div class="debug-popover-header">
+          <span>Logs</span>
+          <button type="button" id="debugClear">Clear</button>
+        </div>
+        <pre class="debug-log" id="debugLog"></pre>
+      </div>
+    </section>
+  </div>
 </body>
 </html>

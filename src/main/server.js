@@ -2,8 +2,7 @@ const http = require('http');
 const { loadConfig } = require('./config');
 const { doPrint } = require('./print');
 
-const DEFAULT_PORT = parseInt(process.env.PORT, 10) || 3847;
-let currentPort = DEFAULT_PORT;
+let currentPort = 3847;
 let httpServer = null;
 
 function createServer(dialog) {
@@ -11,6 +10,8 @@ function createServer(dialog) {
     httpServer.close();
     httpServer = null;
   }
+  const config = loadConfig();
+  currentPort = parseInt(config.port, 10) || parseInt(process.env.PORT, 10) || 3847;
   httpServer = http.createServer((req, res) => {
     if (req.method !== 'POST' || req.url !== '/print-receipt') {
       res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -48,7 +49,6 @@ function createServer(dialog) {
       dialog.showErrorBox('Printer Agent', `Could not start server: ${err.message}`);
     }
   });
-  currentPort = DEFAULT_PORT;
   httpServer.listen(currentPort, () => {
     console.log(`Printer agent listening on http://localhost:${currentPort}`);
   });

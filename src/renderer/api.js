@@ -13,3 +13,35 @@ export function onConfig(fn) {
     window.printerAgent.onConfig(fn);
   }
 }
+
+export function getPrintQueue() {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.getPrintQueue() : Promise.resolve([]);
+}
+
+export function getStatus() {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.getStatus() : Promise.resolve({});
+}
+
+export function setPaused(paused) {
+  if (typeof window.printerAgent !== 'undefined') {
+    window.printerAgent.setPaused(paused);
+  }
+}
+
+export function onPrintQueueUpdate(fn) {
+  if (typeof window.printerAgent !== 'undefined') {
+    window.printerAgent.onPrintQueueUpdate(fn);
+  }
+}
+
+export function onLog(fn) {
+  if (typeof window.printerAgent !== 'undefined') {
+    window.printerAgent.onLog(fn);
+  }
+}
+
+export function onLogHistory(fn) {
+  if (typeof window.printerAgent !== 'undefined') {
+    window.printerAgent.onLogHistory(fn);
+  }
+}

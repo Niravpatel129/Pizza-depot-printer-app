@@ -1,5 +1,7 @@
 const { BrowserWindow } = require('electron');
 const { loadConfig } = require('./config');
+const backendSocket = require('./backendSocket');
+const logger = require('./logger');
 
 let settingsWindow = null;
 
@@ -10,16 +12,20 @@ function openSettings(refreshMenu) {
   }
   const config = loadConfig();
   settingsWindow = new BrowserWindow({
-    width: 440,
-    height: 200,
+    width: 400,
+    height: 580,
+    minWidth: 360,
+    minHeight: 420,
     show: false,
-    title: 'Printer Agent',
+    title: 'Settings',
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
     },
   });
   settingsWindow.setMenuBarVisibility(false);
   settingsWindow.on('closed', () => {
+    backendSocket.setNotify(null);
+    logger.setWebContents(null);
     settingsWindow = null;
     if (refreshMenu) refreshMenu();
   });
@@ -31,6 +37,12 @@ function openSettings(refreshMenu) {
     } catch (e) {
       console.error('getPrintersAsync failed:', e);
     }
+    backendSocket.setNotify((data) => {
+      if (settingsWindow && !settingsWindow.isDestroyed()) {
+        settingsWindow.webContents.send('print-queue-update', data);
+      }
+    });
+    logger.setWebContents(settingsWindow.webContents);
     settingsWindow.show();
     settingsWindow.webContents.send('config', { config, printers });
   });
