@@ -8,8 +8,6 @@ const API_BASE_URL = 'https://pizza-depot-backend-91ae077a284d.herokuapp.com';
 
 const DEFAULTS = {
   printer: '',
-  receiptWidth: 42,
-  printBarcode: true,
   kitchenSecret: '',
   pollIntervalMs: 10000,
   port: 3847,

@@ -1,4 +1,4 @@
-const { app, ipcMain, dialog } = require('electron');
+const { app, ipcMain, dialog, powerSaveBlocker } = require('electron');
 const config = require('./config');
 const server = require('./server');
 const tray = require('./tray');
@@ -28,6 +28,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 let trayApi = null;
+let powerSaveId = null;
 
 ipcMain.on('save-config', (_, savedConfig) => {
   config.saveConfig(savedConfig);
@@ -75,6 +76,7 @@ ipcMain.handle('reprint-order', (_, order) => {
 });
 
 app.whenReady().then(() => {
+  powerSaveId = powerSaveBlocker.start('prevent-app-suspension');
   server.createServer(dialog);
   backendSocket.connect();
   initAutoUpdater(ipcMain, (channel, payload) => windows.sendToSettings(channel, payload));
@@ -90,6 +92,7 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {});
 
 app.on('before-quit', () => {
+  if (powerSaveId != null) powerSaveBlocker.stop(powerSaveId);
   windows.prepareForQuit();
   backendSocket.disconnect();
   server.closeServer();

@@ -99,9 +99,7 @@ async function processNext() {
   if (isPaused || printQueue.length === 0) return;
   const item = printQueue[0];
   const config = loadConfig();
-  const useBarcode = !!config.printBarcode;
-  const receipt = useBarcode ? buildReceiptBuffer(item.order, config) : buildReceipt(item.order, config);
-  if (!useBarcode) console.log('\n' + receipt + '\n');
+  const receipt = buildReceiptBuffer(item.order, config);
   const result = await doPrint(receipt, config);
   const ok = result && result.ok === true;
   if (ok) {
@@ -335,7 +333,7 @@ function connect() {
     clearLivenessCheck();
     notify();
     clearReconnectFallback();
-    schedulePollingFallback();
+    startPolling();
   });
   socket.on('connect_error', (e) => {
     connected = false;

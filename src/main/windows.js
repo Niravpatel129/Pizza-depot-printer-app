@@ -46,7 +46,7 @@ function openSettings(refreshMenu) {
   settingsWindow.on('close', (e) => {
     if (!isQuitting) {
       e.preventDefault();
-      settingsWindow.hide();
+      settingsWindow.minimize();
       if (refreshMenu) refreshMenu();
     }
   });

@@ -55,7 +55,7 @@ function createServer(dialog) {
     }
   });
   httpServer.listen(currentPort, () => {
-    console.log(`Printer agent listening on http://localhost:${currentPort}`);
+    console.log(`Printer agent listening on port ${currentPort}`);
   });
 }
 
