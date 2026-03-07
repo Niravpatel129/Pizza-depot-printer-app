@@ -1,5 +1,9 @@
+import { getPaperWidth } from "./printerConfig";
+
 const ESC = "\x1b";
 const GS = "\x1d";
+
+const WIDTH = getPaperWidth(false);
 
 export const commands = {
   INIT: ESC + "@",
@@ -10,8 +14,9 @@ export const commands = {
   BOLD_OFF: ESC + "E" + "\x00",
   CUT: GS + "V" + "\x00",
   CUT_FEED: GS + "V" + "\x01",
-  SEPARATOR: "\n" + "-".repeat(42) + "\n",
+  SEPARATOR: "\n" + "-".repeat(WIDTH) + "\n",
   LF: "\n",
+  WIDTH,
 };
 
 export interface ReceiptData {
@@ -51,9 +56,10 @@ export function buildEscposFromReceiptData(data: ReceiptData): Buffer {
       const qty = item.quantity ?? 1;
       const price = item.price ?? 0;
       const lineTotal = (qty * price).toFixed(2);
-      const left = name.length > 28 ? name.slice(0, 25) + "..." : name;
+      const maxName = WIDTH - 18;
+      const left = name.length > maxName ? name.slice(0, maxName - 3) + "..." : name;
       const right = `${qty} x ${price.toFixed(2)} = ${lineTotal}`;
-      const padding = Math.max(0, 42 - left.length - right.length);
+      const padding = Math.max(0, WIDTH - left.length - right.length);
       push(left + " ".repeat(padding) + right + commands.LF);
     }
   }

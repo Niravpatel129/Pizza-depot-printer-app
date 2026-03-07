@@ -4,6 +4,11 @@ import os from "os";
 
 const execAsync = promisify(exec);
 
+const isCloud =
+  process.env.VERCEL === "1" ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME != null ||
+  process.env.KUBERNETES_SERVICE_HOST != null;
+
 function parseLpstatP(stdout: string): string[] {
   const names: string[] = [];
   for (const line of stdout.split("\n")) {
@@ -25,10 +30,18 @@ function parseLpstatA(stdout: string): string[] {
 }
 
 export async function GET() {
+  if (isCloud) {
+    return Response.json({
+      ok: true,
+      printers: [],
+      debug: "Printers are only available when running the app locally (same machine as the printer).",
+    });
+  }
+
   const platform = os.platform();
   try {
     if (platform === "darwin" || platform === "linux") {
-      const lpstat = "/usr/bin/lpstat";
+      const lpstat = "lpstat";
       let names: string[] = [];
       let debug = "";
 
@@ -38,7 +51,11 @@ export async function GET() {
         names = parseLpstatP(stdout);
       } catch (e) {
         const err = e as { stdout?: string; stderr?: string };
-        debug = [err.stdout, err.stderr].filter(Boolean).join("\n").trim() || (e instanceof Error ? e.message : "lpstat failed");
+        const raw = [err.stdout, err.stderr].filter(Boolean).join("\n").trim();
+        debug = raw || (e instanceof Error ? e.message : "lpstat failed");
+        if (raw && (raw.includes("No such file") || raw.includes("not found"))) {
+          debug = "Printer list not available in this environment. Run the app on your computer for USB printing.";
+        }
       }
 
       if (names.length === 0) {
