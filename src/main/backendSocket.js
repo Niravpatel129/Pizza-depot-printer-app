@@ -95,14 +95,14 @@ function setNotify(fn) {
   if (fn) fn({ queue: getQueue(), status: getStatus() });
 }
 
-function processNext() {
+async function processNext() {
   if (isPaused || printQueue.length === 0) return;
   const item = printQueue[0];
   const config = loadConfig();
   const useBarcode = !!config.printBarcode;
   const receipt = useBarcode ? buildReceiptBuffer(item.order, config) : buildReceipt(item.order, config);
   if (!useBarcode) console.log('\n' + receipt + '\n');
-  const result = doPrint(receipt, config);
+  const result = await doPrint(receipt, config);
   const ok = result && result.ok === true;
   if (ok) {
     clearRetryTimer();

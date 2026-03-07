@@ -4,14 +4,16 @@ const os = require('os');
 const path = require('path');
 
 let printerModule = null;
+let PosPrinter = null;
 try {
-  printerModule = require('@thesusheer/electron-printer');
+  printerModule = require('printer');
 } catch {
-  try {
-    printerModule = require('printer');
-  } catch {
-    printerModule = null;
-  }
+  printerModule = null;
+}
+try {
+  PosPrinter = require('electron-pos-printer').PosPrinter;
+} catch {
+  PosPrinter = null;
 }
 
 function stripControlChars(buf) {
@@ -22,6 +24,19 @@ function stripControlChars(buf) {
       return code === 9 || code === 10 || code === 13 || (code >= 32 && code !== 127);
     })
     .join('');
+}
+
+function posPrintOptions(config) {
+  const printerName = config?.printer?.trim();
+  return {
+    preview: false,
+    silent: true,
+    printerName: printerName || undefined,
+    pageSize: '80mm',
+    margin: '0 0 0 0',
+    copies: 1,
+    timeOutPerLine: 400,
+  };
 }
 
 function doPrintRaw(buffer, config) {
@@ -38,22 +53,40 @@ function doPrintRaw(buffer, config) {
             throw err;
           },
         });
-        return { ok: true };
+        return Promise.resolve({ ok: true });
       } catch (e) {
         const msg = e?.message || String(e);
         console.error('Raw print failed:', msg);
-        return { ok: false, error: msg };
+        return Promise.resolve({ ok: false, error: msg });
       }
     }
-    try {
-      const text = stripControlChars(buffer);
-      if (text.trim()) return doPrint(text, config);
-    } catch (e) {
-      console.error('Fallback text print failed:', e?.message || e);
+    if (PosPrinter) {
+      try {
+        const text = stripControlChars(buffer);
+        if (text.trim()) {
+          return PosPrinter.print(
+            [{ type: 'text', value: text, style: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }],
+            posPrintOptions(config)
+          ).then(() => ({ ok: true })).catch((e) => {
+            const msg = e?.message || String(e);
+            console.error('POS printer fallback failed:', msg);
+            return { ok: false, error: msg };
+          });
+        }
+      } catch (e) {
+        console.error('Fallback text print failed:', e?.message || e);
+      }
+    } else {
+      try {
+        const text = stripControlChars(buffer);
+        if (text.trim()) return doPrint(text, config);
+      } catch (e) {
+        console.error('Fallback text print failed:', e?.message || e);
+      }
     }
     const msg = 'No printer module (Windows)';
     console.error(msg);
-    return { ok: false, error: msg };
+    return Promise.resolve({ ok: false, error: msg });
   }
   let tmpFile;
   try {
@@ -61,11 +94,11 @@ function doPrintRaw(buffer, config) {
     fs.writeFileSync(tmpFile, buffer);
     const printerArg = printerName ? ` -d ${JSON.stringify(printerName)}` : '';
     execSync(`lp -o raw${printerArg} ${JSON.stringify(tmpFile)}`, { stdio: 'pipe' });
-    return { ok: true };
+    return Promise.resolve({ ok: true });
   } catch (e) {
     const msg = e?.message || String(e);
     console.error('Raw print failed:', msg);
-    return { ok: false, error: msg };
+    return Promise.resolve({ ok: false, error: msg });
   } finally {
     if (tmpFile) {
       try {
@@ -82,6 +115,16 @@ function doPrint(receipt, config) {
     return doPrintRaw(receipt, config);
   }
   if (process.platform === 'win32') {
+    if (PosPrinter) {
+      const data = [{ type: 'text', value: receipt, style: { whiteSpace: 'pre-wrap', fontFamily: 'monospace' } }];
+      return PosPrinter.print(data, posPrintOptions(config))
+        .then(() => ({ ok: true }))
+        .catch((e) => {
+          const msg = e?.message || String(e);
+          console.error('Print failed:', msg);
+          return { ok: false, error: msg };
+        });
+    }
     try {
       const tmpFile = path.join(os.tmpdir(), `receipt-${Date.now()}.txt`);
       fs.writeFileSync(tmpFile, receipt, 'utf8');
@@ -97,21 +140,21 @@ function doPrint(receipt, config) {
       } catch (e) {
         console.warn('Cleanup temp file failed:', e.message);
       }
-      return { ok: true };
+      return Promise.resolve({ ok: true });
     } catch (e) {
       const msg = e?.message || String(e);
       console.error('Print failed:', msg);
-      return { ok: false, error: msg };
+      return Promise.resolve({ ok: false, error: msg });
     }
   }
   try {
     const printerArg = config?.printer ? ` -d ${JSON.stringify(config.printer)}` : '';
     execSync(`echo ${JSON.stringify(receipt)} | lp${printerArg}`, { stdio: 'inherit' });
-    return { ok: true };
+    return Promise.resolve({ ok: true });
   } catch (e) {
     const msg = e?.message || String(e);
     console.error('Print failed:', msg);
-    return { ok: false, error: msg };
+    return Promise.resolve({ ok: false, error: msg });
   }
 }
 

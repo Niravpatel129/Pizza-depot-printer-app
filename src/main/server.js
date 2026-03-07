@@ -20,7 +20,7 @@ function createServer(dialog) {
     }
     let body = '';
     req.on('data', (chunk) => (body += chunk));
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const data = body ? JSON.parse(body) : {};
         const lines = data.lines ?? (data.text ? data.text.split('\n') : ['(no content)']);
@@ -32,7 +32,7 @@ function createServer(dialog) {
         ].join('\n');
         console.log('\n' + receipt + '\n');
         const config = loadConfig();
-        const result = doPrint(receipt, config);
+        const result = await doPrint(receipt, config);
         if (result && result.ok) {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, printed: true }));
