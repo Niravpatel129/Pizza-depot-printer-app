@@ -37,6 +37,21 @@ function setOrderListEmptyMessage(msg) {
   if (empty) empty.textContent = msg;
 }
 
+const REPRINT_COOLDOWN_MS = 4000;
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  toast.setAttribute('role', 'status');
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.remove();
+  }, 3500);
+}
+
 function orderDetailsLine(order) {
   const parts = [];
   if (order.storeName) parts.push(order.storeName);
@@ -105,35 +120,79 @@ function renderOrderList(orders, emptyMessage) {
     reprintBtn.textContent = 'Reprint';
     reprintBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      reprintOrder(order).catch(() => {});
+      reprintBtn.disabled = true;
+      reprintBtn.classList.add('printing');
+      reprintBtn.textContent = 'Printing…';
+      showToast('Sending to printer…', 'info');
+      reprintOrder(order)
+        .then(() => {
+          getPrintQueue().then(renderQueue);
+          return getStatus();
+        })
+        .then((s) => {
+          renderStatus(s);
+          if (document.getElementById('paused')) {
+            document.getElementById('paused').checked = !!s.paused;
+            syncPauseSwitch();
+          }
+          showToast('Printed', 'success');
+        })
+        .catch(() => {
+          showToast('Reprint failed', 'error');
+        })
+        .finally(() => {
+          setTimeout(() => {
+            reprintBtn.disabled = false;
+            reprintBtn.classList.remove('printing');
+            reprintBtn.textContent = 'Reprint';
+          }, REPRINT_COOLDOWN_MS);
+        });
     });
     li.appendChild(reprintBtn);
     list.appendChild(li);
   });
 }
 
+function normalizeQueuePayload(queue) {
+  if (queue && typeof queue === 'object' && !Array.isArray(queue) && ('pending' in queue || 'printed' in queue)) {
+    return {
+      pending: Array.isArray(queue.pending) ? queue.pending : [],
+      printed: Array.isArray(queue.printed) ? queue.printed : [],
+    };
+  }
+  if (Array.isArray(queue)) {
+    return { pending: queue, printed: [] };
+  }
+  return { pending: [], printed: [] };
+}
+
 function renderQueue(queue) {
   const list = document.getElementById('queueList');
   const empty = document.getElementById('queueEmpty');
   if (!list || !empty) return;
-  const items = queue || [];
+  const { pending, printed } = normalizeQueuePayload(queue);
+  const items = [...pending, ...printed];
   list.innerHTML = '';
-  if (items.length === 0) {
-    list.style.display = 'none';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-  list.style.display = 'block';
+  empty.style.display = items.length === 0 ? 'block' : 'none';
+  list.style.display = items.length === 0 ? 'none' : 'block';
+  if (items.length === 0) return;
   items.forEach((item, i) => {
     const li = document.createElement('li');
+    if (item.printed) li.classList.add('printed');
     const num = document.createElement('span');
     num.className = 'num';
     num.textContent = `${i + 1}.`;
     const label = document.createElement('span');
+    label.className = 'queue-item-label';
     label.textContent = item.label || `#${item.id}`;
     li.appendChild(num);
     li.appendChild(label);
+    if (item.printed) {
+      const badge = document.createElement('span');
+      badge.className = 'queue-printed-badge';
+      badge.textContent = 'Printed';
+      li.appendChild(badge);
+    }
     list.appendChild(li);
   });
 }
@@ -247,6 +306,7 @@ export function mountSettings() {
         kitchenSecret: kitchenSecret ? kitchenSecret.value : '',
         pollIntervalMs: Number.isFinite(pollMs) ? Math.max(3000, Math.min(120000, pollMs)) : 10000,
       });
+      showToast('Settings saved', 'success');
     };
   }
   const pausedEl = document.getElementById('paused');
@@ -265,8 +325,8 @@ export function mountSettings() {
     });
   }
   onPrintQueueUpdate((data) => {
-    if (data.queue) renderQueue(data.queue);
-    if (data.status) {
+    renderQueue(data?.queue);
+    if (data?.status) {
       renderStatus(data.status);
       if (pausedEl) {
         pausedEl.checked = !!data.status.paused;

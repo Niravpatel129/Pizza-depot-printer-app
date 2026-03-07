@@ -34,7 +34,6 @@ ipcMain.on('save-config', (_, savedConfig) => {
   config.saveConfig(savedConfig);
   server.createServer(dialog);
   backendSocket.connect();
-  windows.closeSettings();
   if (trayApi) trayApi.refreshMenu();
 });
 

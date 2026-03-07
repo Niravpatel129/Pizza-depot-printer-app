@@ -4,8 +4,11 @@ const http = require('http');
 const { loadConfig, API_BASE_URL } = require('./config');
 const { doPrint } = require('./print');
 
+const MAX_RECENTLY_PRINTED = 50;
+
 let socket = null;
 let printQueue = [];
+let recentlyPrinted = [];
 let printedOrderIds = new Set();
 let isPaused = false;
 let lastPrintedAt = null;
@@ -57,11 +60,20 @@ function notify() {
 }
 
 function getQueue() {
-  return printQueue.map((item, i) => ({
+  const pending = printQueue.map((item, i) => ({
     id: item.id ?? i,
     label: item.label ?? `Order ${i + 1}`,
     addedAt: item.addedAt,
+    printed: false,
   }));
+  const printed = recentlyPrinted.map((item) => ({
+    id: item.id,
+    label: item.label ?? `#${item.id}`,
+    addedAt: item.addedAt,
+    printedAt: item.printedAt,
+    printed: true,
+  }));
+  return { pending, printed };
 }
 
 function getStatus() {
@@ -97,6 +109,11 @@ function processNext() {
   console.log('\n' + receipt + '\n');
   doPrint(receipt, config);
   lastPrintedAt = new Date().toISOString();
+  const printedEntry = { ...item, printedAt: lastPrintedAt };
+  recentlyPrinted.push(printedEntry);
+  if (recentlyPrinted.length > MAX_RECENTLY_PRINTED) {
+    recentlyPrinted = recentlyPrinted.slice(-MAX_RECENTLY_PRINTED);
+  }
   notify();
   if (printQueue.length > 0 && !isPaused) setImmediate(processNext);
 }
