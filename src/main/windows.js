@@ -9,7 +9,8 @@ let isQuitting = false;
 
 function getPreloadPath() {
   if (typeof MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY !== 'undefined' && MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY) {
-    return MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY;
+    const p = MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY;
+    return path.isAbsolute(p) ? p : path.resolve(__dirname, p);
   }
   return path.resolve(__dirname, '..', 'renderer', 'main_window', 'preload.js');
 }
