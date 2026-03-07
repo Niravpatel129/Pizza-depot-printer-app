@@ -5,6 +5,7 @@ const backendSocket = require('./backendSocket');
 const logger = require('./logger');
 
 let settingsWindow = null;
+let isQuitting = false;
 
 function getPreloadPath() {
   if (typeof MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY !== 'undefined' && MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY) {
@@ -22,6 +23,7 @@ function getWindowUrl() {
 
 function openSettings(refreshMenu) {
   if (settingsWindow) {
+    settingsWindow.show();
     settingsWindow.focus();
     return;
   }
@@ -41,6 +43,13 @@ function openSettings(refreshMenu) {
     },
   });
   settingsWindow.setMenuBarVisibility(false);
+  settingsWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      settingsWindow.hide();
+      if (refreshMenu) refreshMenu();
+    }
+  });
   settingsWindow.on('closed', () => {
     backendSocket.setNotify(null);
     logger.setWebContents(null);
@@ -80,4 +89,8 @@ function sendToSettings(channel, payload) {
   }
 }
 
-module.exports = { openSettings, closeSettings, sendToSettings };
+function prepareForQuit() {
+  isQuitting = true;
+}
+
+module.exports = { openSettings, closeSettings, sendToSettings, prepareForQuit };

@@ -32,9 +32,14 @@ function createServer(dialog) {
         ].join('\n');
         console.log('\n' + receipt + '\n');
         const config = loadConfig();
-        doPrint(receipt, config);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, printed: true }));
+        const result = doPrint(receipt, config);
+        if (result && result.ok) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, printed: true }));
+        } else {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: (result && result.error) || 'Print failed' }));
+        }
       } catch (e) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, error: String(e.message) }));

@@ -90,6 +90,7 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {});
 
 app.on('before-quit', () => {
+  windows.prepareForQuit();
   backendSocket.disconnect();
   server.closeServer();
 });

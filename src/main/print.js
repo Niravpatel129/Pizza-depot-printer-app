@@ -24,13 +24,16 @@ function doPrintRaw(buffer, config) {
             throw err;
           },
         });
-        return true;
+        return { ok: true };
       } catch (e) {
-        console.error('Raw print failed:', e.message);
-        return false;
+        const msg = e?.message || String(e);
+        console.error('Raw print failed:', msg);
+        return { ok: false, error: msg };
       }
     }
-    return false;
+    const msg = 'No printer module (Windows)';
+    console.error(msg);
+    return { ok: false, error: msg };
   }
   let tmpFile;
   try {
@@ -38,10 +41,11 @@ function doPrintRaw(buffer, config) {
     fs.writeFileSync(tmpFile, buffer);
     const printerArg = printerName ? ` -d ${JSON.stringify(printerName)}` : '';
     execSync(`lp -o raw${printerArg} ${JSON.stringify(tmpFile)}`, { stdio: 'pipe' });
-    return true;
+    return { ok: true };
   } catch (e) {
-    console.error('Raw print failed:', e.message);
-    return false;
+    const msg = e?.message || String(e);
+    console.error('Raw print failed:', msg);
+    return { ok: false, error: msg };
   } finally {
     if (tmpFile) {
       try {
@@ -73,19 +77,21 @@ function doPrint(receipt, config) {
       } catch (e) {
         console.warn('Cleanup temp file failed:', e.message);
       }
-      return true;
+      return { ok: true };
     } catch (e) {
-      console.error('Print failed:', e.message);
-      return false;
+      const msg = e?.message || String(e);
+      console.error('Print failed:', msg);
+      return { ok: false, error: msg };
     }
   }
   try {
     const printerArg = config?.printer ? ` -d ${JSON.stringify(config.printer)}` : '';
     execSync(`echo ${JSON.stringify(receipt)} | lp${printerArg}`, { stdio: 'inherit' });
-    return true;
+    return { ok: true };
   } catch (e) {
-    console.error('Print failed:', e.message);
-    return false;
+    const msg = e?.message || String(e);
+    console.error('Print failed:', msg);
+    return { ok: false, error: msg };
   }
 }
 

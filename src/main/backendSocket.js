@@ -100,7 +100,8 @@ function processNext() {
   const useBarcode = !!config.printBarcode;
   const receipt = useBarcode ? buildReceiptBuffer(item.order, config) : buildReceipt(item.order, config);
   if (!useBarcode) console.log('\n' + receipt + '\n');
-  const ok = doPrint(receipt, config);
+  const result = doPrint(receipt, config);
+  const ok = result && result.ok === true;
   if (ok) {
     clearRetryTimer();
     printError = null;
@@ -117,7 +118,9 @@ function processNext() {
     notify();
     if (printQueue.length > 0 && !isPaused) setImmediate(processNext);
   } else {
-    printError = 'Printer unavailable';
+    const errMsg = (result && result.error) ? result.error : 'Printer unavailable';
+    printError = errMsg;
+    console.error('Print failed:', errMsg);
     nextRetryAt = new Date(Date.now() + RETRY_DELAY_MS).toISOString();
     clearRetryTimer();
     retryTimer = setTimeout(() => {
