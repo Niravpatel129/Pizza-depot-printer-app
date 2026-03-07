@@ -24,6 +24,10 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled rejection at', promise, 'reason:', reason);
+});
+
 let trayApi = null;
 
 ipcMain.on('save-config', (_, savedConfig) => {
@@ -57,6 +61,9 @@ ipcMain.handle('get-log-history', () => {
 ipcMain.on('set-paused', (_, paused) => backendSocket.setPaused(paused));
 ipcMain.handle('reprint-order', (_, order) => {
   try {
+    if (!order || (typeof order !== 'object' && typeof order !== 'function')) {
+      return Promise.reject(new Error('Invalid order'));
+    }
     backendSocket.reprintOrder(order);
     return Promise.resolve();
   } catch (err) {

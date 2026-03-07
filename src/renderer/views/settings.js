@@ -18,7 +18,7 @@ function renderStatus(status) {
   const meta = document.getElementById('statusMeta');
   const hint = document.getElementById('statusHint');
   if (!pill || !text || !meta) return;
-  const { connected, paused, queueLength, lastPrintedAt } = status || {};
+  const { connected, queueLength, lastPrintedAt } = status || {};
   pill.className = 'status-pill ' + (connected ? 'connected' : 'disconnected');
   text.textContent = connected ? 'Connected' : 'Disconnected';
   const parts = [`${queueLength ?? 0} in queue`];
@@ -157,7 +157,7 @@ export function setupRefreshClick(getOrderListFn, opts = {}) {
     doc.querySelector('[data-action="refresh-order-list"]');
   function onRefresh() {
     if (debugDetailsEl) debugDetailsEl.open = true;
-    appendRendererLog(debugLogEl, 'hello world (Refresh clicked in renderer)');
+    appendRendererLog(debugLogEl, 'Order list refresh requested');
     if (typeof getOrderListFn === 'function') getOrderListFn();
   }
   if (refreshBtn) {

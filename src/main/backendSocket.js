@@ -112,7 +112,8 @@ function addOrderToQueue(order) {
 }
 
 function reprintOrder(order) {
-  const id = order?._id ?? order?.id ?? order?.orderId;
+  if (!order || typeof order !== 'object') return;
+  const id = order._id ?? order.id ?? order.orderId;
   if (id) printedOrderIds.delete(id);
   addOrderToQueue(order);
 }

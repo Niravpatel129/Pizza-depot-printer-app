@@ -9,7 +9,7 @@ describe('settings refresh flow', () => {
     ].join('');
   });
 
-  test('clicking Refresh appends hello world to debug log', () => {
+  test('clicking Refresh appends message to debug log and calls getOrderListFn', () => {
     const getOrderListFn = jest.fn().mockResolvedValue({ orders: [] });
     const debugLogEl = document.getElementById('debugLog');
     const debugDetailsEl = document.getElementById('debugDetails');
@@ -19,8 +19,7 @@ describe('settings refresh flow', () => {
     const btn = document.querySelector('[data-action="refresh-order-list"]');
     btn.click();
 
-    expect(debugLogEl.innerHTML).toContain('hello world');
-    expect(debugLogEl.innerHTML).toContain('Refresh clicked in renderer');
+    expect(debugLogEl.innerHTML).toContain('Order list refresh requested');
     expect(getOrderListFn).toHaveBeenCalled();
   });
 

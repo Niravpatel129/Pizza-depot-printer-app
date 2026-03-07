@@ -20,6 +20,9 @@ function openSettings(refreshMenu) {
     title: 'Settings',
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
     },
   });
   settingsWindow.setMenuBarVisibility(false);
