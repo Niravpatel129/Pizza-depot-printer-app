@@ -340,6 +340,7 @@ function connect() {
     connectionError = e?.message || (e && String(e)) || 'Connection failed';
     notify();
     if (connectionError) console.error('Backend socket error:', connectionError);
+    schedulePollingFallback();
   });
 }
 
