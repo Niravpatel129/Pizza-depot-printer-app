@@ -1,46 +1,15 @@
-name: Release
+name: Release on Tag
 
 on:
   push:
-    branches:
-      - main
-      - master
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      tag: ${{ steps.version.outputs.tag }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get version
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Create and push tag
-        run: |
-          TAG="v$(node -p "require('./package.json').version")"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "$TAG"
-          git push origin "$TAG"
-
   build-windows:
-    needs: prepare
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +31,6 @@ jobs:
           path: out/make/
 
   build-macos:
-    needs: prepare
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,7 +56,7 @@ jobs:
           path: out/make/
 
   release:
-    needs: [prepare, build-windows, build-macos]
+    needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -98,8 +66,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.prepare.outputs.tag }}
-          name: Release ${{ needs.prepare.outputs.tag }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           generate_release_notes: true
           replace_assets: true
           files: |

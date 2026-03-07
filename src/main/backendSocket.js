@@ -3,6 +3,7 @@ const https = require('https');
 const http = require('http');
 const { loadConfig, API_BASE_URL } = require('./config');
 const { doPrint } = require('./print');
+const { buildReceipt } = require('./receiptFormatter');
 
 const MAX_RECENTLY_PRINTED = 50;
 
@@ -16,44 +17,6 @@ let connected = false;
 let pollTimer = null;
 let lastPollSince = null;
 let notifyFn = null;
-
-function orderToLines(order) {
-  if (!order) return ['(no content)'];
-  if (order.lines && order.lines.length) return order.lines;
-  if (order.receipt_lines && order.receipt_lines.length) return order.receipt_lines;
-  if (order.receiptLines && order.receiptLines.length) return order.receiptLines;
-  if (order.text) return order.text.split('\n');
-  const lines = [];
-  const orderNum = order.orderNumber || order._id || order.id || order.orderId;
-  if (orderNum) lines.push(`Order #${orderNum}`);
-  if (order.storeName) lines.push(order.storeName);
-  if (order.items && order.items.length) {
-    order.items.forEach((i) => {
-      const name = i.name || i.title || '';
-      const qty = i.quantity ?? i.qty ?? 1;
-      const price = i.price ?? i.total ?? '';
-      const opts = i.options && i.options.length ? ` (${i.options.join(', ')})` : '';
-      lines.push(`${qty}x ${name}${opts}${price ? `  $${Number(price).toFixed(2)}` : ''}`);
-    });
-  }
-  if (order.subtotal != null) lines.push(`Subtotal  $${Number(order.subtotal).toFixed(2)}`);
-  if (order.tax != null) lines.push(`Tax  $${Number(order.tax).toFixed(2)}`);
-  if (order.deliveryFee != null && order.deliveryFee > 0) lines.push(`Delivery  $${Number(order.deliveryFee).toFixed(2)}`);
-  if (order.total != null) lines.push(`Total  $${Number(order.total).toFixed(2)}`);
-  if (order.notes) lines.push(`Notes: ${order.notes}`);
-  if (order.deliveryAddress) lines.push(`Address: ${order.deliveryAddress}`);
-  if (lines.length) return lines;
-  return ['(no content)'];
-}
-
-function buildReceipt(lines) {
-  return [
-    '--------------------------------',
-    ...lines,
-    '--------------------------------',
-    `Printed at ${new Date().toISOString()}`,
-  ].join('\n');
-}
 
 function notify() {
   if (notifyFn) notifyFn({ queue: getQueue(), status: getStatus() });
@@ -104,8 +67,7 @@ function processNext() {
   }
   notify();
   const config = loadConfig();
-  const lines = orderToLines(item.order);
-  const receipt = buildReceipt(lines);
+  const receipt = buildReceipt(item.order);
   console.log('\n' + receipt + '\n');
   doPrint(receipt, config);
   lastPrintedAt = new Date().toISOString();
@@ -121,8 +83,7 @@ function processNext() {
 function addOrderToQueue(order) {
   const id = order?._id ?? order?.id ?? order?.orderId ?? String(Date.now());
   if (printedOrderIds.has(id)) return;
-  const lines = orderToLines(order);
-  const label = (order.orderNumber || lines[0] || `Order ${id}`).slice(0, 40);
+  const label = (order.orderNumber || order._id || order.id || `Order ${id}`).toString().slice(0, 40);
   printQueue.push({ id, order, addedAt: new Date().toISOString(), label });
   notify();
   if (!isPaused) processNext();

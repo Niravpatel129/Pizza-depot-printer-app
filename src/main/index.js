@@ -5,6 +5,7 @@ const tray = require('./tray');
 const windows = require('./windows');
 const backendSocket = require('./backendSocket');
 const logger = require('./logger');
+const { initAutoUpdater } = require('./updater');
 
 const _log = console.log.bind(console);
 const _error = console.error.bind(console);
@@ -72,6 +73,7 @@ ipcMain.handle('reprint-order', (_, order) => {
 app.whenReady().then(() => {
   server.createServer(dialog);
   backendSocket.connect();
+  initAutoUpdater(ipcMain, (channel, payload) => windows.sendToSettings(channel, payload));
   const openSettings = () => windows.openSettings(() => trayApi && trayApi.refreshMenu());
   const refreshOrderList = () => {
     console.log('Order list refresh triggered from tray');

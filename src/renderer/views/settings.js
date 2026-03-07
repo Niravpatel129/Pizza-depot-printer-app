@@ -1,4 +1,9 @@
 import {
+  getAppVersion,
+  checkForUpdates,
+  downloadUpdate,
+  quitAndInstall,
+  onUpdateStatus,
   getLogHistory,
   getOrderList,
   getPrintQueue,
@@ -397,5 +402,64 @@ export function mountSettings() {
       e.preventDefault();
       debugLog.innerHTML = '';
     });
+  }
+
+  const versionEl = document.getElementById('appVersion');
+  const checkUpdatesBtn = document.getElementById('checkUpdatesBtn');
+  const updateStatusEl = document.getElementById('updateStatus');
+  const updateAvailableEl = document.getElementById('updateAvailable');
+  const updateAvailableText = document.getElementById('updateAvailableText');
+  const downloadUpdateBtn = document.getElementById('downloadUpdateBtn');
+  const installUpdateBtn = document.getElementById('installUpdateBtn');
+
+  getAppVersion().then((v) => {
+    if (versionEl) versionEl.textContent = v || '—';
+  });
+
+  function setUpdateStatus(text) {
+    if (updateStatusEl) updateStatusEl.textContent = text;
+  }
+
+  onUpdateStatus((data) => {
+    const { status, info, progress, error } = data || {};
+    if (status === 'checking') setUpdateStatus('Checking…');
+    else if (status === 'available') {
+      setUpdateStatus(`Update available: v${info?.version || '?'}`);
+      if (updateAvailableEl) updateAvailableEl.style.display = 'block';
+      if (updateAvailableText) updateAvailableText.textContent = `Version ${info?.version} is available.`;
+      if (downloadUpdateBtn) downloadUpdateBtn.style.display = 'inline-flex';
+      if (installUpdateBtn) installUpdateBtn.style.display = 'none';
+    } else if (status === 'not-available') setUpdateStatus('You’re on the latest version.');
+    else if (status === 'downloading' && progress != null) {
+      const pct = progress.percent != null ? Math.round(progress.percent) : 0;
+      setUpdateStatus(`Downloading… ${pct}%`);
+    } else if (status === 'downloaded') {
+      setUpdateStatus('Update ready.');
+      if (downloadUpdateBtn) downloadUpdateBtn.style.display = 'none';
+      if (installUpdateBtn) installUpdateBtn.style.display = 'inline-flex';
+    } else if (status === 'error') setUpdateStatus(error || 'Update check failed.');
+  });
+
+  if (checkUpdatesBtn) {
+    checkUpdatesBtn.addEventListener('click', () => {
+      setUpdateStatus('Checking…');
+      if (updateAvailableEl) updateAvailableEl.style.display = 'none';
+      checkForUpdates().then((res) => {
+        if (res?.error) setUpdateStatus(res.error);
+      });
+    });
+  }
+
+  if (downloadUpdateBtn) {
+    downloadUpdateBtn.addEventListener('click', () => {
+      setUpdateStatus('Downloading…');
+      downloadUpdate().then((res) => {
+        if (res?.error) setUpdateStatus(res.error);
+      });
+    });
+  }
+
+  if (installUpdateBtn) {
+    installUpdateBtn.addEventListener('click', () => quitAndInstall());
   }
 }

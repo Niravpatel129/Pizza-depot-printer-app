@@ -74,4 +74,10 @@ function closeSettings() {
   }
 }
 
-module.exports = { openSettings, closeSettings };
+function sendToSettings(channel, payload) {
+  if (settingsWindow && !settingsWindow.isDestroyed() && settingsWindow.webContents) {
+    settingsWindow.webContents.send(channel, payload);
+  }
+}
+
+module.exports = { openSettings, closeSettings, sendToSettings };

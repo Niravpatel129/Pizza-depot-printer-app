@@ -17,4 +17,9 @@ contextBridge.exposeInMainWorld('printerAgent', {
   getLogHistory: () => ipcRenderer.invoke('get-log-history'),
   onLog: (fn) => { ipcRenderer.on('log', (_, entry) => fn(entry)); },
   onLogHistory: (fn) => { ipcRenderer.on('log-history', (_, entries) => fn(entries)); },
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  quitAndInstall: () => ipcRenderer.send('quit-and-install'),
+  onUpdateStatus: (fn) => { ipcRenderer.on('update-status', (_, data) => fn(data)); },
 });

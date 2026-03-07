@@ -388,6 +388,12 @@
     .debug-log .line .lvl.log { color: #94a3b8; }
     .debug-log .line .lvl.warn { color: #fcd34d; }
     .debug-log .line .lvl.error { color: #fca5a5; }
+    .about-card .about-version { margin: 0 0 12px; font-size: 13px; color: var(--text-muted); }
+    .update-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .update-status { font-size: 12px; color: var(--text-muted); }
+    .update-available { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .update-available p { margin: 0 0 8px; font-size: 13px; }
+    .update-available .btn-primary { margin-right: 8px; }
   </style>
 </head>
 <body>
@@ -454,6 +460,19 @@
           <pre class="debug-log" id="debugLog"></pre>
         </div>
       </details>
+      <section class="card about-card">
+        <h2 class="card-title">About</h2>
+        <p class="about-version">Version <span id="appVersion">—</span></p>
+        <div class="update-row">
+          <button type="button" class="btn-primary" id="checkUpdatesBtn">Check for updates</button>
+          <span id="updateStatus" class="update-status" aria-live="polite"></span>
+        </div>
+        <div id="updateAvailable" class="update-available" style="display: none;">
+          <p id="updateAvailableText"></p>
+          <button type="button" class="btn-primary" id="downloadUpdateBtn">Download</button>
+          <button type="button" class="btn-primary" id="installUpdateBtn" style="display: none;">Restart to install</button>
+        </div>
+      </section>
     </section>
     </div>
     <footer class="footer-actions">

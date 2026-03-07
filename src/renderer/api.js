@@ -57,3 +57,27 @@ export function onLogHistory(fn) {
     window.printerAgent.onLogHistory(fn);
   }
 }
+
+export function getAppVersion() {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.getAppVersion() : Promise.resolve('0.0.0');
+}
+
+export function checkForUpdates() {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.checkForUpdates() : Promise.resolve({});
+}
+
+export function downloadUpdate() {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.downloadUpdate() : Promise.resolve({});
+}
+
+export function quitAndInstall() {
+  if (typeof window.printerAgent !== 'undefined') {
+    window.printerAgent.quitAndInstall();
+  }
+}
+
+export function onUpdateStatus(fn) {
+  if (typeof window.printerAgent !== 'undefined') {
+    window.printerAgent.onUpdateStatus(fn);
+  }
+}
