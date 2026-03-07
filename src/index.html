@@ -178,6 +178,13 @@
       font-size: 12px;
       color: var(--text-muted);
     }
+    .status-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0 0 12px;
+      line-height: 1.4;
+    }
+    .status-hint.connected { display: none; }
     .toggle-row {
       display: flex;
       align-items: center;
@@ -342,8 +349,6 @@
         <input type="password" id="kitchenSecret" placeholder="64-char hex from admin or kitchen-secrets.md" autocomplete="off" />
         <label for="pollIntervalMs">Poll interval (ms)</label>
         <input type="number" id="pollIntervalMs" min="3000" max="120000" step="1000" placeholder="10000" />
-        <label for="serverPort">Local server port</label>
-        <input type="number" id="serverPort" min="1024" max="65535" placeholder="3847" />
       </section>
       <section class="card">
       <h2 class="card-title">Print queue</h2>
@@ -354,6 +359,7 @@
         </div>
         <span id="statusMeta" class="status-meta">—</span>
       </div>
+      <p id="statusHint" class="status-hint">Add your kitchen secret in the Kitchen section above and click Save to connect.</p>
       <div class="toggle-row">
         <div>
           <p class="toggle-label">Pause printing</p>

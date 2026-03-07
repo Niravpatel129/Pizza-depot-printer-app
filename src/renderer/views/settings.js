@@ -4,6 +4,7 @@ function renderStatus(status) {
   const pill = document.getElementById('statusPill');
   const text = document.getElementById('statusText');
   const meta = document.getElementById('statusMeta');
+  const hint = document.getElementById('statusHint');
   if (!pill || !text || !meta) return;
   const { connected, paused, queueLength, lastPrintedAt } = status || {};
   pill.className = 'status-pill ' + (connected ? 'connected' : 'disconnected');
@@ -11,6 +12,12 @@ function renderStatus(status) {
   const parts = [`${queueLength ?? 0} in queue`];
   if (lastPrintedAt) parts.push(`Last: ${new Date(lastPrintedAt).toLocaleTimeString()}`);
   meta.textContent = parts.join(' · ');
+  if (hint) {
+    hint.textContent = connected
+      ? 'Receiving orders from backend.'
+      : 'Add your kitchen secret in the Kitchen section above and click Save to connect.';
+    hint.classList.toggle('connected', !!connected);
+  }
 }
 
 function renderQueue(queue) {
@@ -96,10 +103,8 @@ export function mountSettings() {
     }
     const kitchenSecret = document.getElementById('kitchenSecret');
     const pollIntervalMs = document.getElementById('pollIntervalMs');
-    const serverPort = document.getElementById('serverPort');
     if (kitchenSecret) kitchenSecret.value = config?.kitchenSecret || '';
     if (pollIntervalMs) pollIntervalMs.value = config?.pollIntervalMs ?? 10000;
-    if (serverPort) serverPort.value = config?.port ?? 3847;
   });
   const saveBtn = document.getElementById('save');
   if (saveBtn) {
@@ -107,14 +112,11 @@ export function mountSettings() {
       const select = document.getElementById('printer');
       const kitchenSecret = document.getElementById('kitchenSecret');
       const pollIntervalMs = document.getElementById('pollIntervalMs');
-      const serverPort = document.getElementById('serverPort');
-      const port = serverPort ? parseInt(serverPort.value, 10) : 3847;
       const pollMs = pollIntervalMs ? parseInt(pollIntervalMs.value, 10) : 10000;
       saveConfig({
         printer: select ? select.value.trim() : '',
         kitchenSecret: kitchenSecret ? kitchenSecret.value : '',
         pollIntervalMs: Number.isFinite(pollMs) ? Math.max(3000, Math.min(120000, pollMs)) : 10000,
-        port: Number.isFinite(port) ? port : 3847,
       });
     };
   }
