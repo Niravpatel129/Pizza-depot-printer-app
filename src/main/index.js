@@ -24,6 +24,8 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
+app.setAppUserModelId('com.squirrel.PrinterAgent.PrinterAgent');
+
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled rejection at', promise, 'reason:', reason);
 });
