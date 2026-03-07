@@ -6,6 +6,18 @@ function init() {
   return Buffer.from([ESC, 0x40]);
 }
 
+function lineSpacingDefault() {
+  return Buffer.from([ESC, 0x32]);
+}
+
+function alignment(n) {
+  return Buffer.from([ESC, 0x61, n]);
+}
+
+function characterSize(n) {
+  return Buffer.from([GS, 0x21, n]);
+}
+
 function barcodeCODE128(data) {
   const str = String(data).slice(0, 80);
   const bytes = Buffer.from(str, 'ascii');
@@ -24,7 +36,19 @@ function feed(n) {
 }
 
 function buildRawReceipt(text, barcodeData) {
-  const parts = [init(), Buffer.from(text, 'utf8'), Buffer.from([LF])];
+  const parts = [init(), lineSpacingDefault(), characterSize(0x11)];
+  const sections = String(text).split(/\n\n+/);
+  const header = sections[0] || '';
+  const body = sections[1] || sections[0] || '';
+  const footer = sections[2] || (sections.length > 1 ? sections[1] : '');
+  if (header) {
+    parts.push(alignment(1), Buffer.from(header + '\n', 'utf8'));
+  }
+  parts.push(alignment(0), Buffer.from(body + (body ? '\n' : ''), 'utf8'));
+  if (footer && footer !== body) {
+    parts.push(alignment(1), Buffer.from(footer + '\n', 'utf8'));
+  }
+  parts.push(characterSize(0), Buffer.from([LF]));
   if (barcodeData != null && String(barcodeData).trim()) {
     parts.push(barcodeCODE128(String(barcodeData).trim()));
     parts.push(Buffer.from([LF]));

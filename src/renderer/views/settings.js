@@ -220,7 +220,7 @@ function renderQueue(queue) {
   const empty = document.getElementById('queueEmpty');
   if (!list || !empty) return;
   const { pending, printed } = normalizeQueuePayload(queue);
-  const items = [...pending, ...printed];
+  const items = [...pending, ...printed].reverse();
   list.innerHTML = '';
   empty.style.display = items.length === 0 ? 'block' : 'none';
   list.style.display = items.length === 0 ? 'none' : 'block';

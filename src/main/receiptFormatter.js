@@ -29,6 +29,21 @@ function formatDate(order) {
   }
 }
 
+function formatDateTime(order) {
+  const raw = order.date || order.orderDate || order.createdAt || order.created_at;
+  if (!raw) return '';
+  try {
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return '';
+    const mon = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const dateStr = `${mon} ${d.getDate()}, ${d.getFullYear()}`;
+    const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return `${dateStr} ${timeStr}`;
+  } catch {
+    return '';
+  }
+}
+
 function center(str, width) {
   const s = String(str).trim();
   if (s.length >= width) return s.slice(0, width);
@@ -66,20 +81,25 @@ function orderToReceiptLines(order, width) {
   const lines = [];
   const orderNum = order.orderNumber ?? order.order_id ?? order._id ?? order.id ?? order.orderId ?? '';
   const customerName = (order.customerName ?? order.customer_name ?? order.customer?.name ?? order.customer?.firstName ?? '').toString().trim().toUpperCase();
-  const orderLabel = orderNum ? `ORDER: #${String(orderNum).replace(/^#/, '')}${customerName ? ` FOR ${customerName}` : ''}` : '';
-  if (orderLabel) lines.push(orderLabel.length > w ? orderLabel.slice(0, w) : orderLabel);
-  const dateStr = formatDate(order);
-  if (dateStr) lines.push((dateStr.length > w ? dateStr.slice(0, w) : dateStr));
+  const timestampStr = formatDateTime(order);
+  if (timestampStr) lines.push((timestampStr.length > w ? timestampStr.slice(0, w) : timestampStr));
+  if (orderNum || customerName) {
+    const orderLabel = orderNum
+      ? `ORDER #${String(orderNum).replace(/^#/, '')}${customerName ? ` · ${customerName}` : ''}`
+      : customerName ? `FOR ${customerName}` : '';
+    if (orderLabel) lines.push(orderLabel.length > w ? orderLabel.slice(0, w) : orderLabel);
+  }
+  const orderType = (order.orderType ?? order.type ?? order.deliveryType ?? '').toString().trim().toUpperCase();
+  if (orderType) lines.push((orderType.length > w ? orderType.slice(0, w) : orderType));
   lines.push(sep);
-  lines.push(padRight('NUM ITEM', nameCol) + 'AMT ($)');
+  lines.push(padRight('ITEM', nameCol) + 'AMT ($)');
   const items = order.items || order.lineItems || [];
   let itemCount = 0;
-  items.forEach((item, idx) => {
-    const num = String(idx + 1).padStart(2, '0');
+  items.forEach((item) => {
     const name = (item.name ?? item.title ?? '').toString().trim().toUpperCase();
     const price = formatPrice(item.price ?? item.total ?? item.amount);
     itemCount += Number(item.quantity ?? item.qty ?? 1) || 1;
-    const namePart = `${num} ${name}`;
+    const namePart = name;
     const pricePart = price ? price.padStart(8) : '';
     lines.push(padRight(namePart, nameCol) + pricePart);
     const modifiers = item.modifiers ?? item.toppings ?? item.options ?? [];
@@ -130,8 +150,11 @@ function buildReceipt(orderOrLines, opts) {
 
 const { buildRawReceipt } = require('./escpos');
 
+const RAW_RECEIPT_WIDTH = 24;
+
 function buildReceiptBuffer(orderOrLines, opts) {
-  const text = buildReceipt(orderOrLines, opts);
+  const rawOpts = { ...opts, receiptWidth: RAW_RECEIPT_WIDTH };
+  const text = buildReceipt(orderOrLines, rawOpts);
   const order = orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines) ? orderOrLines : null;
   const barcodeData = order
     ? (order.orderNumber ?? order.order_id ?? order._id ?? order.id ?? order.orderId ?? '')

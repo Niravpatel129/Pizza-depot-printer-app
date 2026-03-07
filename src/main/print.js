@@ -93,7 +93,8 @@ function doPrintRaw(buffer, config) {
     tmpFile = path.join(os.tmpdir(), `receipt-raw-${Date.now()}.bin`);
     fs.writeFileSync(tmpFile, buffer);
     const printerArg = printerName ? ` -d ${JSON.stringify(printerName)}` : '';
-    execSync(`lp -o raw${printerArg} ${JSON.stringify(tmpFile)}`, { stdio: 'pipe' });
+    const mediaOpt = process.platform === 'darwin' ? ' -o media=Custom.80x297mm' : ' -o media=80mm';
+    execSync(`lp -o raw${mediaOpt}${printerArg} ${JSON.stringify(tmpFile)}`, { stdio: 'pipe' });
     return Promise.resolve({ ok: true });
   } catch (e) {
     const msg = e?.message || String(e);
