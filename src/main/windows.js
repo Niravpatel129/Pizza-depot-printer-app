@@ -43,6 +43,7 @@ function openSettings(refreshMenu) {
       }
     });
     logger.setWebContents(settingsWindow.webContents);
+    console.log('Settings window opened — logs appear in Debug logs and in this terminal.');
     settingsWindow.show();
     settingsWindow.webContents.send('config', { config, printers });
   });

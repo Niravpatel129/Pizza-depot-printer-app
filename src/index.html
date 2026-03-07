@@ -351,6 +351,15 @@
         <input type="number" id="pollIntervalMs" min="3000" max="120000" step="1000" placeholder="10000" />
       </section>
       <section class="card">
+        <h2 class="card-title">Order list</h2>
+        <p class="status-meta" style="margin-bottom: 8px;">History from GET /api/kitchen/orders. Print queue is driven by socket and Print receipt.</p>
+        <button type="button" class="btn-primary" id="refreshOrderList" data-action="refresh-order-list" style="margin-bottom: 12px;">Refresh</button>
+        <div class="queue-wrap" style="max-height: 160px;">
+          <ul id="orderList" class="queue-list"></ul>
+          <div id="orderListEmpty" class="queue-empty">No orders in list. Click Refresh to load.</div>
+        </div>
+      </section>
+      <section class="card">
       <h2 class="card-title">Print queue</h2>
       <div class="status-bar">
         <div id="statusPill" class="status-pill disconnected">

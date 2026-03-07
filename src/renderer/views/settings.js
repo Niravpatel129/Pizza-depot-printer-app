@@ -1,4 +1,4 @@
-import { onConfig, saveConfig, getStatus, setPaused, onPrintQueueUpdate, onLog, onLogHistory } from '../api';
+import { onConfig, saveConfig, getStatus, setPaused, onPrintQueueUpdate, onLog, onLogHistory, getLogHistory, getOrderList } from '../api';
 
 function renderStatus(status) {
   const pill = document.getElementById('statusPill');
@@ -18,6 +18,41 @@ function renderStatus(status) {
       : 'Add your kitchen secret in the Kitchen section above and click Save to connect.';
     hint.classList.toggle('connected', !!connected);
   }
+}
+
+function setOrderListEmptyMessage(msg) {
+  const empty = document.getElementById('orderListEmpty');
+  if (empty) empty.textContent = msg;
+}
+
+function renderOrderList(orders, emptyMessage) {
+  const list = document.getElementById('orderList');
+  const empty = document.getElementById('orderListEmpty');
+  if (!list || !empty) return;
+  const items = orders || [];
+  list.innerHTML = '';
+  if (items.length === 0) {
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    setOrderListEmptyMessage(emptyMessage || 'No orders in list. Click Refresh to load.');
+    return;
+  }
+  empty.style.display = 'none';
+  list.style.display = 'block';
+  items.forEach((order, i) => {
+    const li = document.createElement('li');
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = `${i + 1}.`;
+    const label = document.createElement('span');
+    const numStr = order.orderNumber || order._id || order.id || '—';
+    const totalStr = order.total != null ? `$${Number(order.total).toFixed(2)}` : '';
+    const statusStr = order.status || '';
+    label.textContent = [numStr, statusStr, totalStr].filter(Boolean).join(' · ');
+    li.appendChild(num);
+    li.appendChild(label);
+    list.appendChild(li);
+  });
 }
 
 function renderQueue(queue) {
@@ -72,6 +107,29 @@ function appendLogEntry(entry, container) {
   line.innerHTML = `<span class="ts">${ts}</span><span class="lvl ${level || 'log'}">${(level || 'log').toUpperCase()}</span> ${escapeHtml(message || '')}`;
   container.appendChild(line);
   container.scrollTop = container.scrollHeight;
+}
+
+export function appendRendererLog(container, message) {
+  if (!container) return;
+  const line = document.createElement('div');
+  line.className = 'line log';
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false }) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+  line.innerHTML = `<span class="ts">${ts}</span><span class="lvl log">LOG</span> ${escapeHtml(message)}`;
+  container.appendChild(line);
+  container.scrollTop = container.scrollHeight;
+}
+
+export function setupRefreshClick(getOrderListFn, opts = {}) {
+  const doc = opts.document || document;
+  const debugLogEl = opts.debugLogEl || doc.getElementById('debugLog');
+  const debugDetailsEl = opts.debugDetailsEl || doc.getElementById('debugDetails');
+  doc.body.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-action="refresh-order-list"]')) return;
+    e.preventDefault();
+    if (debugDetailsEl) debugDetailsEl.open = true;
+    appendRendererLog(debugLogEl, 'hello world (Refresh clicked in renderer)');
+    if (typeof getOrderListFn === 'function') getOrderListFn();
+  });
 }
 
 function escapeHtml(s) {
@@ -154,9 +212,44 @@ export function mountSettings() {
   });
   getPrintQueue().then(renderQueue);
 
+  function loadOrderList() {
+    const empty = document.getElementById('orderListEmpty');
+    const refreshBtn = document.getElementById('refreshOrderList');
+    if (empty) empty.style.display = 'block';
+    setOrderListEmptyMessage('Loading…');
+    if (refreshBtn) refreshBtn.disabled = true;
+    getOrderList({ limit: 50 })
+      .then(({ orders }) => renderOrderList(orders))
+      .catch(() => renderOrderList([], 'Load failed. Click Refresh to try again.'))
+      .finally(() => { if (refreshBtn) refreshBtn.disabled = false; });
+  }
+  loadOrderList();
+  setupRefreshClick(loadOrderList);
+
   const debugLog = document.getElementById('debugLog');
   const debugClear = document.getElementById('debugClear');
-  onLogHistory((entries) => renderLogHistory(entries, debugLog));
+  const debugDetailsEl = document.getElementById('debugDetails');
+
+  function refreshLogHistory() {
+    if (!debugLog) return;
+    getLogHistory()
+      .then((entries) => {
+        const list = Array.isArray(entries) ? entries : [];
+        if (list.length === 0) {
+          debugLog.innerHTML = '';
+          debugLog.appendChild(document.createTextNode('No logs yet. Main process logs appear here and in the terminal.'));
+        } else {
+          renderLogHistory(list, debugLog);
+        }
+      })
+      .catch(() => { if (debugLog) debugLog.textContent = 'Could not load logs.'; });
+  }
+
+  refreshLogHistory();
+  if (debugDetailsEl) {
+    debugDetailsEl.addEventListener('toggle', () => { if (debugDetailsEl.open) refreshLogHistory(); });
+  }
+  onLogHistory((entries) => renderLogHistory(Array.isArray(entries) ? entries : [], debugLog));
   onLog((entry) => appendLogEntry(entry, debugLog));
   if (debugClear && debugLog) {
     debugClear.addEventListener('click', (e) => {

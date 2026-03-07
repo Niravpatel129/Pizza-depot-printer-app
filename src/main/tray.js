@@ -22,7 +22,7 @@ function getTrayIcon() {
   return img;
 }
 
-function buildTrayMenu(openSettings, onRestart) {
+function buildTrayMenu(openSettings, onRestart, onRefreshOrderList) {
   const config = loadConfig();
   const printerLabel = config.printer || '(default)';
   const hasCreds = !!config.kitchenSecret;
@@ -30,6 +30,7 @@ function buildTrayMenu(openSettings, onRestart) {
     { label: `Printer: ${printerLabel}`, enabled: false },
     { label: hasCreds ? 'Connected' : 'Set kitchen secret in Settings', enabled: false },
     { type: 'separator' },
+    { label: 'Refresh order list', click: () => onRefreshOrderList && onRefreshOrderList() },
     { label: 'Settings', click: () => openSettings() },
     { label: 'Restart server', click: () => onRestart && onRestart() },
     { type: 'separator' },
@@ -37,10 +38,10 @@ function buildTrayMenu(openSettings, onRestart) {
   ]);
 }
 
-function initTray(openSettings, createServer) {
+function initTray(openSettings, createServer, onRefreshOrderList) {
   tray = new Tray(getTrayIcon());
   tray.setToolTip('Printer Agent');
-  const refreshMenu = () => tray.setContextMenu(buildTrayMenu(openSettings, () => { createServer(); refreshMenu(); }));
+  const refreshMenu = () => tray.setContextMenu(buildTrayMenu(openSettings, () => { createServer(); refreshMenu(); }, onRefreshOrderList));
   refreshMenu();
   return { setContextMenu: (menu) => tray.setContextMenu(menu), refreshMenu };
 }

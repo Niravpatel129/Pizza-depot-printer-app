@@ -130,6 +130,41 @@ function stopPolling() {
   }
 }
 
+function getOrderList(opts = {}) {
+  const config = loadConfig();
+  const base = (API_BASE_URL || '').replace(/\/$/, '');
+  const secret = config.kitchenSecret || '';
+  if (!base || !secret) {
+    console.log('GET /api/kitchen/orders skipped (no kitchen secret or API base)');
+    return Promise.resolve({ orders: [] });
+  }
+  const params = new URLSearchParams({ secret, limit: String(opts.limit || 50) });
+  if (opts.since) params.set('since', opts.since);
+  if (opts.status) params.set('status', opts.status);
+  const pathStr = `/api/kitchen/orders?${params.toString()}`;
+  const fullUrl = new URL(pathStr, base);
+  console.log('GET /api/kitchen/orders requesting', fullUrl.origin + fullUrl.pathname);
+  return new Promise((resolve, reject) => {
+    const protocol = fullUrl.protocol === 'https:' ? https : http;
+    const req = protocol.get(fullUrl.toString(), (res) => {
+      let data = '';
+      res.on('data', (chunk) => (data += chunk));
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data || '{}');
+          const orders = json.orders || [];
+          console.log('Order list response:', orders.length, 'orders');
+          resolve({ orders });
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('timeout')); });
+  });
+}
+
 function fetchKitchenOrders(cb) {
   const config = loadConfig();
   const base = (API_BASE_URL || '').replace(/\/$/, '');
@@ -228,4 +263,4 @@ function disconnect() {
   notify();
 }
 
-module.exports = { connect, disconnect, getQueue, getStatus, setPaused, setNotify };
+module.exports = { connect, disconnect, getQueue, getStatus, setPaused, setNotify, getOrderList };

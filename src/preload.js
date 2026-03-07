@@ -8,10 +8,12 @@ contextBridge.exposeInMainWorld('printerAgent', {
   },
   getPrintQueue: () => ipcRenderer.invoke('get-print-queue'),
   getStatus: () => ipcRenderer.invoke('get-status'),
+  getOrderList: (opts) => ipcRenderer.invoke('get-order-list', opts),
   setPaused: (paused) => ipcRenderer.send('set-paused', paused),
   onPrintQueueUpdate: (fn) => {
     ipcRenderer.on('print-queue-update', (_, data) => fn(data));
   },
+  getLogHistory: () => ipcRenderer.invoke('get-log-history'),
   onLog: (fn) => { ipcRenderer.on('log', (_, entry) => fn(entry)); },
   onLogHistory: (fn) => { ipcRenderer.on('log-history', (_, entries) => fn(entries)); },
 });
