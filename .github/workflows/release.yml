@@ -116,6 +116,31 @@ jobs:
         with:
           path: artifacts
 
+      - name: Generate latest.yml for electron-updater
+        run: |
+          VERSION="${{ needs.prepare.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          EXE=$(find artifacts/windows -name "*.exe" -type f | head -1)
+          if [ -z "$EXE" ]; then
+            echo "No Windows exe found in artifacts"
+            exit 1
+          fi
+          REL_PATH="${EXE#artifacts/}"
+          FILENAME=$(basename "$EXE")
+          SHA512=$(sha512sum "$EXE" | awk '{print $1}')
+          SIZE=$(stat -c%s "$EXE")
+          RELEASE_DATE=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+          {
+            echo "version: $VERSION"
+            echo "files:"
+            echo "  - url: \"$REL_PATH\""
+            echo "    sha512: $SHA512"
+            echo "    size: $SIZE"
+            echo "path: \"$REL_PATH\""
+            echo "sha512: $SHA512"
+            echo "releaseDate: $RELEASE_DATE"
+          } > artifacts/latest.yml
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -127,5 +152,6 @@ jobs:
             artifacts/windows/**/*.exe
             artifacts/windows/**/*.zip
             artifacts/macos/**/*
+            artifacts/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

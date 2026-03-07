@@ -10,6 +10,16 @@ try {
   printerModule = null;
 }
 
+function stripControlChars(buf) {
+  const text = (typeof buf === 'string' ? buf : buf.toString('utf8')).replace(/\r\n/g, '\n');
+  return Array.from(text)
+    .filter((c) => {
+      const code = c.charCodeAt(0);
+      return code === 9 || code === 10 || code === 13 || (code >= 32 && code !== 127);
+    })
+    .join('');
+}
+
 function doPrintRaw(buffer, config) {
   const printerName = config?.printer?.trim();
   if (process.platform === 'win32') {
@@ -30,6 +40,12 @@ function doPrintRaw(buffer, config) {
         console.error('Raw print failed:', msg);
         return { ok: false, error: msg };
       }
+    }
+    try {
+      const text = stripControlChars(buffer);
+      if (text.trim()) return doPrint(text, config);
+    } catch (e) {
+      console.error('Fallback text print failed:', e?.message || e);
     }
     const msg = 'No printer module (Windows)';
     console.error(msg);
