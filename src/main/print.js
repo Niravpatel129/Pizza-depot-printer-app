@@ -47,20 +47,22 @@ function buildReceiptPrintHtml(receiptText) {
 <style>
   @media print {
     @page { size: 80mm auto; margin: 0; }
-    html, body { width: 80mm; margin: 0; padding: 0; }
+    html, body { width: 80mm; max-width: 80mm; margin: 0; padding: 0; box-sizing: border-box; }
     .receipt {
-      width: 72mm;
-      padding: 4mm;
+      width: 100%;
+      max-width: 80mm;
       box-sizing: border-box;
+      margin: 0;
+      padding: 4mm 0 4mm 4mm;
       font-family: ui-monospace, monospace;
-      font-size: 12px;
+      font-size: 1.58mm;
       line-height: 1.25;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
   }
-  html, body { width: 80mm; margin: 0; padding: 0; font-family: ui-monospace, monospace; font-size: 12px; }
-  .receipt { width: 72mm; padding: 4mm; box-sizing: border-box; white-space: pre-wrap; overflow-wrap: anywhere; }
+  html, body { width: 80mm; max-width: 80mm; margin: 0; padding: 0; box-sizing: border-box; font-family: ui-monospace, monospace; font-size: 12px; }
+  .receipt { width: 100%; max-width: 80mm; margin: 0; padding: 4mm 0 4mm 4mm; box-sizing: border-box; font-size: 1.58mm; white-space: pre-wrap; overflow-wrap: anywhere; }
 </style>
 </head>
 <body><div class="receipt">${body}</div></body>

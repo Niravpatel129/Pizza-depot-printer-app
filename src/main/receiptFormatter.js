@@ -141,8 +141,9 @@ function rowsToPlainText(rows, width) {
       if (row.align === 'center') lines.push(center(s, w));
       else lines.push(s || '');
     } else if (row.type === 'columns') {
+      const rightColWidth = w - nameCol;
       const left = (row.left ?? '').slice(0, nameCol);
-      const right = (row.right ?? '').slice(-(w - nameCol));
+      const right = (row.right ?? '').slice(-rightColWidth).padStart(rightColWidth);
       lines.push(padRight(left, nameCol) + right);
     } else if (row.type === 'divider') {
       lines.push(sep);
