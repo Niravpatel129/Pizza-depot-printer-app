@@ -75,13 +75,11 @@ ipcMain.handle('reprint-order', (_, order) => {
   }
 });
 
-const { buildReceipt } = require('./receiptFormatter');
-const { getActiveProfile, widthToCharWidth } = require('./printerProfiles');
-const { printJob } = require('./print');
-
 ipcMain.handle('get-receipt-preview', (_, order) => {
   try {
     if (!order || typeof order !== 'object') return '';
+    const { buildReceipt } = require('./receiptFormatter');
+    const { getActiveProfile, widthToCharWidth } = require('./printerProfiles');
     const cfg = config.loadConfig();
     const profile = getActiveProfile(cfg);
     const opts = { ...cfg, receiptWidth: widthToCharWidth(profile.width) };
@@ -94,6 +92,7 @@ ipcMain.handle('get-receipt-preview', (_, order) => {
 
 ipcMain.handle('test-print', async () => {
   try {
+    const { printJob } = require('./print');
     const cfg = config.loadConfig();
     const testOrder = {
       orderNumber: 'TEST',
