@@ -23,10 +23,10 @@ let printError = null;
 let nextRetryAt = null;
 let connectionError = null;
 let reconnectFallbackTimer = null;
-let connectionRefreshTimer = null;
 let livenessCheckTimer = null;
+let livenessFailureCount = 0;
 const RECONNECT_POLL_DELAY_MS = 30000;
-const CONNECTION_REFRESH_MS = 120000;
+const LIVENESS_FAILURES_BEFORE_DISCONNECT = 3;
 const LIVENESS_CHECK_MS = 25000;
 
 function notify() {
@@ -108,9 +108,8 @@ async function processNext() {
     clearRetryTimer();
     printError = null;
     printQueue.shift();
-    if (item.order && (item.order._id || item.order.id)) {
-      printedOrderIds.add(item.order._id || item.order.id);
-    }
+    const printedId = item.id ?? normalizeOrderId(item.order);
+    if (printedId) printedOrderIds.add(printedId);
     lastPrintedAt = new Date().toISOString();
     const printedEntry = { ...item, printedAt: lastPrintedAt };
     recentlyPrinted.push(printedEntry);
@@ -133,9 +132,16 @@ async function processNext() {
   }
 }
 
+function normalizeOrderId(order) {
+  const id = order?._id ?? order?.id ?? order?.orderId;
+  return id != null ? String(id) : null;
+}
+
 function addOrderToQueue(order) {
-  const id = order?._id ?? order?.id ?? order?.orderId ?? String(Date.now());
+  const id = normalizeOrderId(order) ?? String(Date.now());
   if (printedOrderIds.has(id)) return;
+  const alreadyQueued = printQueue.some((item) => String(item.id) === String(id));
+  if (alreadyQueued) return;
   const label = (order.orderNumber || order._id || order.id || `Order ${id}`).toString().slice(0, 40);
   printQueue.push({ id, order, addedAt: new Date().toISOString(), label });
   notify();
@@ -144,7 +150,7 @@ function addOrderToQueue(order) {
 
 function reprintOrder(order) {
   if (!order || typeof order !== 'object') return;
-  const id = order._id ?? order.id ?? order.orderId;
+  const id = normalizeOrderId(order);
   if (id) printedOrderIds.delete(id);
   addOrderToQueue(order);
 }
@@ -175,13 +181,6 @@ function clearReconnectFallback() {
   }
 }
 
-function clearConnectionRefresh() {
-  if (connectionRefreshTimer) {
-    clearInterval(connectionRefreshTimer);
-    connectionRefreshTimer = null;
-  }
-}
-
 function clearLivenessCheck() {
   if (livenessCheckTimer) {
     clearInterval(livenessCheckTimer);
@@ -189,25 +188,17 @@ function clearLivenessCheck() {
   }
 }
 
-function startConnectionRefresh() {
-  clearConnectionRefresh();
-  if (!socket) return;
-  connectionRefreshTimer = setInterval(() => {
-    if (socket && connected) {
-      clearConnectionRefresh();
-      socket.disconnect();
-    }
-  }, CONNECTION_REFRESH_MS);
-}
-
 function startLivenessCheck() {
   clearLivenessCheck();
   if (!socket) return;
+  livenessFailureCount = 0;
   livenessCheckTimer = setInterval(() => {
     if (!connected || !socket) return;
     getOrderList({ limit: 1 })
+      .then(() => { livenessFailureCount = 0; })
       .catch(() => {
-        if (socket && connected) {
+        livenessFailureCount += 1;
+        if (livenessFailureCount >= LIVENESS_FAILURES_BEFORE_DISCONNECT && socket && connected) {
           clearLivenessCheck();
           socket.disconnect();
         }
@@ -319,7 +310,7 @@ function connect() {
   socket = io(url, {
     auth: { secret },
     query: { secret },
-    transports: ['websocket', 'polling'],
+    transports: ['polling'],
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
@@ -334,7 +325,6 @@ function connect() {
     clearReconnectFallback();
     stopPolling();
     lastPollSince = null;
-    startConnectionRefresh();
     startLivenessCheck();
     console.log('Printer agent connected to backend');
     notify();
@@ -342,7 +332,6 @@ function connect() {
   socket.on('disconnect', (reason) => {
     connected = false;
     connectionError = reason || 'Disconnected';
-    clearConnectionRefresh();
     clearLivenessCheck();
     notify();
     clearReconnectFallback();
@@ -357,7 +346,6 @@ function connect() {
 }
 
 function disconnect() {
-  clearConnectionRefresh();
   clearLivenessCheck();
   clearReconnectFallback();
   stopPolling();
