@@ -26,6 +26,11 @@
     "email": "niravpatelp129@gmail.com"
   },
   "license": "MIT",
+  "build": {
+    "win": {
+      "executableName": "printer-agent"
+    }
+  },
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",

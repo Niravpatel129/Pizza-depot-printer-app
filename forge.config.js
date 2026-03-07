@@ -5,7 +5,7 @@ module.exports = {
   packagerConfig: {
     asar: true,
     appId: 'com.printeragent.app',
-    executableName: 'Printer Agent',
+    executableName: 'printer-agent',
   },
   rebuildConfig: {},
   makers: [
