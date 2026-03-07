@@ -252,7 +252,9 @@
       color: var(--text-muted);
       min-width: 20px;
     }
-    .queue-list li .order-label { flex: 1; min-width: 0; }
+    .queue-list li .order-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .queue-list li .order-label { font-weight: 500; }
+    .queue-list li .order-details { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .queue-list li .btn-reprint {
       margin-left: auto;
       padding: 4px 10px;

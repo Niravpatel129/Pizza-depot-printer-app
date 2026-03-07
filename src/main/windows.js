@@ -1,9 +1,24 @@
+const path = require('path');
 const { BrowserWindow } = require('electron');
 const { loadConfig } = require('./config');
 const backendSocket = require('./backendSocket');
 const logger = require('./logger');
 
 let settingsWindow = null;
+
+function getPreloadPath() {
+  if (typeof MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY !== 'undefined' && MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY) {
+    return MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY;
+  }
+  return path.resolve(__dirname, '..', 'renderer', 'main_window', 'preload.js');
+}
+
+function getWindowUrl() {
+  if (typeof MAIN_WINDOW_WEBPACK_ENTRY !== 'undefined' && MAIN_WINDOW_WEBPACK_ENTRY) {
+    return MAIN_WINDOW_WEBPACK_ENTRY;
+  }
+  return path.join('file://', __dirname, '..', 'renderer', 'main_window', 'index.html');
+}
 
 function openSettings(refreshMenu) {
   if (settingsWindow) {
@@ -12,14 +27,14 @@ function openSettings(refreshMenu) {
   }
   const config = loadConfig();
   settingsWindow = new BrowserWindow({
-    width: 400,
-    height: 640,
-    minWidth: 360,
-    minHeight: 420,
+    width: 880,
+    height: 780,
+    minWidth: 640,
+    minHeight: 520,
     show: false,
     title: 'Settings',
     webPreferences: {
-      preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+      preload: getPreloadPath(),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -32,7 +47,7 @@ function openSettings(refreshMenu) {
     settingsWindow = null;
     if (refreshMenu) refreshMenu();
   });
-  settingsWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+  settingsWindow.loadURL(getWindowUrl());
   settingsWindow.on('ready-to-show', async () => {
     let printers = [];
     try {

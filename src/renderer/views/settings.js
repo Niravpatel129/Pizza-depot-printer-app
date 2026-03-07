@@ -37,6 +37,31 @@ function setOrderListEmptyMessage(msg) {
   if (empty) empty.textContent = msg;
 }
 
+function orderDetailsLine(order) {
+  const parts = [];
+  if (order.storeName) parts.push(order.storeName);
+  if (order.items && order.items.length) {
+    const count = order.items.reduce((sum, i) => sum + (Number(i.quantity) || Number(i.qty) || 1), 0);
+    parts.push(`${count} item${count !== 1 ? 's' : ''}`);
+  }
+  if (order.notes) {
+    const n = String(order.notes);
+    parts.push(`Note: ${n.slice(0, 40)}${n.length > 40 ? '…' : ''}`);
+  }
+  if (order.deliveryAddress) {
+    const a = String(order.deliveryAddress);
+    parts.push(a.slice(0, 35) + (a.length > 35 ? '…' : ''));
+  }
+  const createdAt = order.createdAt || order.created_at || order.updatedAt || order.updated_at;
+  if (createdAt) {
+    try {
+      const d = new Date(createdAt);
+      if (!Number.isNaN(d.getTime())) parts.push(d.toLocaleString());
+    } catch (_) {}
+  }
+  return parts.join(' · ');
+}
+
 function renderOrderList(orders, emptyMessage) {
   const list = document.getElementById('orderList');
   const empty = document.getElementById('orderListEmpty');
@@ -56,14 +81,24 @@ function renderOrderList(orders, emptyMessage) {
     const num = document.createElement('span');
     num.className = 'num';
     num.textContent = `${i + 1}.`;
+    const content = document.createElement('div');
+    content.className = 'order-content';
     const label = document.createElement('span');
     label.className = 'order-label';
     const numStr = order.orderNumber || order._id || order.id || '—';
     const totalStr = order.total != null ? `$${Number(order.total).toFixed(2)}` : '';
     const statusStr = order.status || '';
     label.textContent = [numStr, statusStr, totalStr].filter(Boolean).join(' · ');
+    content.appendChild(label);
+    const detailsStr = orderDetailsLine(order);
+    if (detailsStr) {
+      const details = document.createElement('span');
+      details.className = 'order-details';
+      details.textContent = detailsStr;
+      content.appendChild(details);
+    }
     li.appendChild(num);
-    li.appendChild(label);
+    li.appendChild(content);
     const reprintBtn = document.createElement('button');
     reprintBtn.type = 'button';
     reprintBtn.className = 'btn-reprint';
