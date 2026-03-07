@@ -16,7 +16,8 @@ function getPrinterName(config) {
 let printerModule = null;
 try {
   printerModule = require('printer');
-} catch {
+} catch (e) {
+  logger.error(`Failed to load printer module: ${e?.stack || e?.message || String(e)}`);
   printerModule = null;
 }
 
@@ -34,7 +35,7 @@ function doPrintRaw(buffer, config) {
         });
       });
     }
-    return Promise.resolve({ ok: false, error: 'Raw printing on Windows requires the printer module' });
+    return Promise.resolve({ ok: false, error: 'Windows RAW printing is unavailable because the native printer module failed to load in the packaged app.' });
   }
   let tmpFile;
   try {

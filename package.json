@@ -12,7 +12,9 @@
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
+    "prepackage": "npm run rebuild:printer",
     "make": "electron-forge make",
+    "premake": "npm run rebuild:printer",
     "rebuild:printer": "electron-rebuild -f -w printer",
     "publish": "electron-forge publish",
     "lint": "eslint src --max-warnings 0",
@@ -58,9 +60,7 @@
   },
   "dependencies": {
     "electron-updater": "^6.3.9",
-    "node-thermal-printer": "^4.6.0"
-  },
-  "optionalDependencies": {
+    "node-thermal-printer": "^4.6.0",
     "printer": "^0.4.0"
   }
 }

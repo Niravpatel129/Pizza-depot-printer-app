@@ -4,6 +4,7 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true,
+    asarUnpack: ['**/*.node', 'node_modules/printer/**/*'],
     appId: 'com.printeragent.app',
     executableName: 'printer-agent',
   },
