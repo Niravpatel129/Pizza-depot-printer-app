@@ -422,6 +422,14 @@
           <option value="32">32 chars (58mm)</option>
           <option value="48">48 chars (80mm generic)</option>
         </select>
+        <div class="toggle-row" style="margin-top: 12px;">
+          <div>
+            <p class="toggle-label">Print barcode on receipt</p>
+            <p class="toggle-desc">Order number as CODE128 barcode (Epson ESC/POS)</p>
+          </div>
+          <div id="printBarcodeSwitch" class="switch" role="switch" aria-checked="true" tabindex="0"></div>
+        </div>
+        <input type="checkbox" id="printBarcode" hidden checked>
       </section>
       <section class="card">
         <h2 class="card-title">Kitchen</h2>

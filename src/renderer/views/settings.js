@@ -308,6 +308,13 @@ export function mountSettings() {
     }
     const receiptWidthEl = document.getElementById('receiptWidth');
     if (receiptWidthEl) receiptWidthEl.value = String(config?.receiptWidth ?? 42);
+    const printBarcodeEl = document.getElementById('printBarcode');
+    const printBarcodeSwitch = document.getElementById('printBarcodeSwitch');
+    if (printBarcodeEl) printBarcodeEl.checked = config?.printBarcode !== false;
+    if (printBarcodeSwitch) {
+      printBarcodeSwitch.setAttribute('aria-checked', printBarcodeEl?.checked ? 'true' : 'false');
+      printBarcodeSwitch.classList.toggle('checked', !!printBarcodeEl?.checked);
+    }
     const kitchenSecret = document.getElementById('kitchenSecret');
     const pollIntervalMs = document.getElementById('pollIntervalMs');
     if (kitchenSecret) kitchenSecret.value = config?.kitchenSecret || '';
@@ -322,14 +329,31 @@ export function mountSettings() {
       const pollMs = pollIntervalMs ? parseInt(pollIntervalMs.value, 10) : 10000;
       const receiptWidthEl = document.getElementById('receiptWidth');
       const receiptWidth = receiptWidthEl ? Math.max(16, Math.min(64, parseInt(receiptWidthEl.value, 10) || 42)) : 42;
+      const printBarcodeEl = document.getElementById('printBarcode');
       saveConfig({
         printer: select ? select.value.trim() : '',
         receiptWidth,
+        printBarcode: printBarcodeEl ? printBarcodeEl.checked : true,
         kitchenSecret: kitchenSecret ? kitchenSecret.value : '',
         pollIntervalMs: Number.isFinite(pollMs) ? Math.max(3000, Math.min(120000, pollMs)) : 10000,
       });
       showToast('Settings saved', 'success');
     };
+  }
+  const printBarcodeCheckbox = document.getElementById('printBarcode');
+  const printBarcodeSwitchEl = document.getElementById('printBarcodeSwitch');
+  if (printBarcodeSwitchEl && printBarcodeCheckbox) {
+    printBarcodeSwitchEl.addEventListener('click', () => {
+      printBarcodeCheckbox.checked = !printBarcodeCheckbox.checked;
+      printBarcodeSwitchEl.setAttribute('aria-checked', String(printBarcodeCheckbox.checked));
+      printBarcodeSwitchEl.classList.toggle('checked', printBarcodeCheckbox.checked);
+    });
+    printBarcodeSwitchEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        printBarcodeSwitchEl.click();
+      }
+    });
   }
   const pausedEl = document.getElementById('paused');
   const switchEl = document.getElementById('pausedSwitch');

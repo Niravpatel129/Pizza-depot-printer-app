@@ -1,7 +1,7 @@
 const https = require('https');
 const { loadConfig } = require('./config');
 const { doPrint } = require('./print');
-const { buildReceipt } = require('./receiptFormatter');
+const { buildReceipt, buildReceiptBuffer } = require('./receiptFormatter');
 
 const DEFAULT_BACKEND_URL = 'https://pizza-depot-backend-91ae077a284d.herokuapp.com';
 const POLL_INTERVAL_MS = 5000;
@@ -55,8 +55,9 @@ function poll() {
     const jobs = data.jobs || data.orders || data.items || Array.isArray(data) ? (data.jobs || data.orders || data.items || data) : [];
     jobs.forEach((job) => {
       const id = job.id || job.orderId || job._id;
-      const receipt = buildReceipt(job, config);
-      console.log('\n' + receipt + '\n');
+      const useBarcode = !!config.printBarcode;
+      const receipt = useBarcode ? buildReceiptBuffer(job, config) : buildReceipt(job, config);
+      if (!useBarcode) console.log('\n' + receipt + '\n');
       doPrint(receipt, config);
       if (id) {
         markPrinted(url, id).catch((e) => console.error('Mark printed failed:', e.message));

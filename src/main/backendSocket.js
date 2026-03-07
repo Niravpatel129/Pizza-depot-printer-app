@@ -3,7 +3,7 @@ const https = require('https');
 const http = require('http');
 const { loadConfig, API_BASE_URL } = require('./config');
 const { doPrint } = require('./print');
-const { buildReceipt } = require('./receiptFormatter');
+const { buildReceipt, buildReceiptBuffer } = require('./receiptFormatter');
 
 const MAX_RECENTLY_PRINTED = 50;
 const RETRY_DELAY_MS = 15000;
@@ -88,8 +88,9 @@ function processNext() {
   if (isPaused || printQueue.length === 0) return;
   const item = printQueue[0];
   const config = loadConfig();
-  const receipt = buildReceipt(item.order, config);
-  console.log('\n' + receipt + '\n');
+  const useBarcode = !!config.printBarcode;
+  const receipt = useBarcode ? buildReceiptBuffer(item.order, config) : buildReceipt(item.order, config);
+  if (!useBarcode) console.log('\n' + receipt + '\n');
   const ok = doPrint(receipt, config);
   if (ok) {
     clearRetryTimer();

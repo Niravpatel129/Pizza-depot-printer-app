@@ -128,4 +128,15 @@ function buildReceipt(orderOrLines, opts) {
   return parts.join('\n\n');
 }
 
-module.exports = { buildReceipt, buildHeader, buildFooter, orderToReceiptLines };
+const { buildRawReceipt } = require('./escpos');
+
+function buildReceiptBuffer(orderOrLines, opts) {
+  const text = buildReceipt(orderOrLines, opts);
+  const order = orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines) ? orderOrLines : null;
+  const barcodeData = order
+    ? (order.orderNumber ?? order.order_id ?? order._id ?? order.id ?? order.orderId ?? '')
+    : '';
+  return buildRawReceipt(text, barcodeData ? String(barcodeData).replace(/^#/, '') : null);
+}
+
+module.exports = { buildReceipt, buildReceiptBuffer, buildHeader, buildFooter, orderToReceiptLines };
