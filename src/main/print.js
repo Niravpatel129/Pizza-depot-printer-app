@@ -89,6 +89,7 @@ async function printJob(job, config) {
     receiptWidth: widthToCharWidth(profile.width),
     supportsCut: profile.supportsCut,
     supportsDrawerKick: profile.supportsDrawerKick,
+    printerType: profile.printerType ?? 'epson',
   };
   const configForPrint = { ...config, _printProfile: profile };
   const receipt = await buildReceiptBuffer(normalized._raw ?? normalized.receipt ?? job, opts);

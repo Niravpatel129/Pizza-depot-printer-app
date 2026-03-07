@@ -435,6 +435,7 @@ export function mountSettings() {
         name: 'New profile',
         connection: 'usb',
         width: 80,
+        printerType: 'epson',
         supportsCut: true,
         supportsDrawerKick: false,
         deviceName: '',
@@ -479,7 +480,8 @@ export function mountSettings() {
           const supportsCut = row.querySelector('[name="profileCut"]')?.checked ?? true;
           const supportsDrawerKick = row.querySelector('[name="profileDrawer"]')?.checked ?? false;
           const deviceName = row.querySelector('[name="profileDevice"]')?.value?.trim() || '';
-          profiles.push({ id, name, connection, protocol: 'escpos', width, supportsCut, supportsDrawerKick, deviceName });
+          const existing = (lastConfig?.printerProfiles ?? []).find((p) => p.id === id);
+          profiles.push({ id, name, connection, protocol: 'escpos', width, printerType: existing?.printerType || 'epson', supportsCut, supportsDrawerKick, deviceName });
         });
       }
       const activePrinterProfileId = activeSelect?.value?.trim() || profiles[0]?.id || '';

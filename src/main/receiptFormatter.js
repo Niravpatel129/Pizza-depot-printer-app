@@ -38,33 +38,6 @@ function center(str, width) {
   return ' '.repeat(Math.floor(pad / 2)) + s + ' '.repeat(Math.ceil(pad / 2));
 }
 
-function buildHeader(data, width) {
-  const name = (data?.receiptStoreName ?? data?.storeName ?? '').toString().trim().toUpperCase();
-  const line1 = (data?.receiptAddressLine1 ?? data?.addressLine1 ?? data?.storeAddressLine1 ?? '').toString().trim().toUpperCase();
-  const line2 = (data?.receiptAddressLine2 ?? data?.addressLine2 ?? data?.storeAddressLine2 ?? '').toString().trim().toUpperCase();
-  const lines = [];
-  if (name) lines.push(center(name, width));
-  if (line1) lines.push(center(line1, width));
-  if (line2) lines.push(center(line2, width));
-  return lines.length ? lines.join('\n') : '';
-}
-
-const DEFAULT_FOOTER_MSG = 'ENJOY YOUR MEAL!';
-
-function buildFooter(data, width) {
-  const msg = (data?.receiptFooterMessage ?? data?.footerMessage ?? data?.footer_message ?? DEFAULT_FOOTER_MSG).toString().trim().toUpperCase() || DEFAULT_FOOTER_MSG;
-  const site = (data?.receiptFooterWebsite ?? data?.footerWebsite ?? data?.footer_website ?? '').toString().trim().toUpperCase();
-  const lines = [];
-  lines.push(center(msg, width));
-  if (site) lines.push(center(site, width));
-  return lines.join('\n');
-}
-
-function orderToReceiptLines(order, width) {
-  const w = width ?? DEFAULT_RECEIPT_WIDTH;
-  return rowsToPlainText(receiptToRows(order, { receiptWidth: w }), w).split(/\n/);
-}
-
 function receiptToRows(orderOrReceipt, opts) {
   const width = getWidth(opts);
   const w = width;
@@ -209,4 +182,4 @@ function buildReceiptBuffer(orderOrLines, opts) {
   });
 }
 
-module.exports = { buildReceipt, buildReceiptBuffer, buildHeader, buildFooter, orderToReceiptLines, receiptToRows, rowsToPlainText };
+module.exports = { buildReceipt, buildReceiptBuffer, receiptToRows, rowsToPlainText };
