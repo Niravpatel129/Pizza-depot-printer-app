@@ -20,16 +20,19 @@ function doPrint(receipt, config) {
       } catch (e) {
         console.warn('Cleanup temp file failed:', e.message);
       }
+      return true;
     } catch (e) {
       console.error('Print failed:', e.message);
+      return false;
     }
-    return;
   }
   try {
     const printerArg = config?.printer ? ` -d ${JSON.stringify(config.printer)}` : '';
     execSync(`echo ${JSON.stringify(receipt)} | lp${printerArg}`, { stdio: 'inherit' });
+    return true;
   } catch (e) {
     console.error('Print failed:', e.message);
+    return false;
   }
 }
 

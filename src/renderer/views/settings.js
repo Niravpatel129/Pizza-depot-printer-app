@@ -23,17 +23,29 @@ function renderStatus(status) {
   const meta = document.getElementById('statusMeta');
   const hint = document.getElementById('statusHint');
   if (!pill || !text || !meta) return;
-  const { connected, queueLength, lastPrintedAt } = status || {};
-  pill.className = 'status-pill ' + (connected ? 'connected' : 'disconnected');
+  const { connected, queueLength, lastPrintedAt, printError, retryScheduled, nextRetryAt } = status || {};
+  const hasPrintError = !!printError;
+  pill.className = 'status-pill ' + (connected ? 'connected' : 'disconnected') + (hasPrintError ? ' print-error' : '');
   text.textContent = connected ? 'Connected' : 'Disconnected';
   const parts = [`${queueLength ?? 0} in queue`];
   if (lastPrintedAt) parts.push(`Last: ${new Date(lastPrintedAt).toLocaleTimeString()}`);
+  if (hasPrintError && retryScheduled && nextRetryAt) {
+    const retryIn = Math.max(0, Math.ceil((new Date(nextRetryAt) - Date.now()) / 1000));
+    parts.push(`Retry in ${retryIn}s`);
+  }
   meta.textContent = parts.join(' · ');
   if (hint) {
-    hint.textContent = connected
-      ? 'Receiving orders from backend.'
-      : 'Add your kitchen secret in the Kitchen section above and click Save to connect.';
+    if (hasPrintError) {
+      hint.textContent = retryScheduled
+        ? `${printError}. Retrying automatically every 15s until printer is available.`
+        : printError;
+    } else {
+      hint.textContent = connected
+        ? 'Receiving orders from backend.'
+        : 'Add your kitchen secret in the Kitchen section above and click Save to connect.';
+    }
     hint.classList.toggle('connected', !!connected);
+    hint.classList.toggle('print-error', hasPrintError);
   }
 }
 

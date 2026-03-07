@@ -6,6 +6,7 @@ const { doPrint } = require('./print');
 const { buildReceipt } = require('./receiptFormatter');
 
 const MAX_RECENTLY_PRINTED = 50;
+const RETRY_DELAY_MS = 15000;
 
 let socket = null;
 let printQueue = [];
@@ -17,6 +18,9 @@ let connected = false;
 let pollTimer = null;
 let lastPollSince = null;
 let notifyFn = null;
+let retryTimer = null;
+let printError = null;
+let nextRetryAt = null;
 
 function notify() {
   if (notifyFn) notifyFn({ queue: getQueue(), status: getStatus() });
@@ -45,11 +49,26 @@ function getStatus() {
     paused: isPaused,
     queueLength: printQueue.length,
     lastPrintedAt,
+    printError: printError || null,
+    retryScheduled: !!retryTimer,
+    nextRetryAt: nextRetryAt || null,
   };
+}
+
+function clearRetryTimer() {
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+  nextRetryAt = null;
 }
 
 function setPaused(paused) {
   isPaused = !!paused;
+  if (isPaused) {
+    clearRetryTimer();
+    printError = null;
+  }
   notify();
   if (!isPaused && printQueue.length > 0) processNext();
 }
@@ -61,23 +80,36 @@ function setNotify(fn) {
 
 function processNext() {
   if (isPaused || printQueue.length === 0) return;
-  const item = printQueue.shift();
-  if (item.order && (item.order._id || item.order.id)) {
-    printedOrderIds.add(item.order._id || item.order.id);
-  }
-  notify();
+  const item = printQueue[0];
   const config = loadConfig();
   const receipt = buildReceipt(item.order);
   console.log('\n' + receipt + '\n');
-  doPrint(receipt, config);
-  lastPrintedAt = new Date().toISOString();
-  const printedEntry = { ...item, printedAt: lastPrintedAt };
-  recentlyPrinted.push(printedEntry);
-  if (recentlyPrinted.length > MAX_RECENTLY_PRINTED) {
-    recentlyPrinted = recentlyPrinted.slice(-MAX_RECENTLY_PRINTED);
+  const ok = doPrint(receipt, config);
+  if (ok) {
+    clearRetryTimer();
+    printError = null;
+    printQueue.shift();
+    if (item.order && (item.order._id || item.order.id)) {
+      printedOrderIds.add(item.order._id || item.order.id);
+    }
+    lastPrintedAt = new Date().toISOString();
+    const printedEntry = { ...item, printedAt: lastPrintedAt };
+    recentlyPrinted.push(printedEntry);
+    if (recentlyPrinted.length > MAX_RECENTLY_PRINTED) {
+      recentlyPrinted = recentlyPrinted.slice(-MAX_RECENTLY_PRINTED);
+    }
+    notify();
+    if (printQueue.length > 0 && !isPaused) setImmediate(processNext);
+  } else {
+    printError = 'Printer unavailable';
+    nextRetryAt = new Date(Date.now() + RETRY_DELAY_MS).toISOString();
+    clearRetryTimer();
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      processNext();
+    }, RETRY_DELAY_MS);
+    notify();
   }
-  notify();
-  if (printQueue.length > 0 && !isPaused) setImmediate(processNext);
 }
 
 function addOrderToQueue(order) {
@@ -239,6 +271,7 @@ function connect() {
 
 function disconnect() {
   stopPolling();
+  clearRetryTimer();
   if (socket) {
     socket.removeAllListeners();
     socket.disconnect();
