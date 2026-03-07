@@ -1,4 +1,4 @@
-import { onConfig, saveConfig, getStatus, setPaused, onPrintQueueUpdate, onLog, onLogHistory, getLogHistory, getOrderList } from '../api';
+import { onConfig, saveConfig, getStatus, setPaused, onPrintQueueUpdate, onLog, onLogHistory, getLogHistory, getOrderList, getPrintQueue } from '../api';
 
 function renderStatus(status) {
   const pill = document.getElementById('statusPill');
@@ -123,13 +123,19 @@ export function setupRefreshClick(getOrderListFn, opts = {}) {
   const doc = opts.document || document;
   const debugLogEl = opts.debugLogEl || doc.getElementById('debugLog');
   const debugDetailsEl = opts.debugDetailsEl || doc.getElementById('debugDetails');
-  doc.body.addEventListener('click', (e) => {
-    if (!e.target.closest('[data-action="refresh-order-list"]')) return;
-    e.preventDefault();
+  const refreshBtn = doc.getElementById('refreshOrderList') || doc.querySelector('[data-action="refresh-order-list"]');
+  function onRefresh() {
+    alert('hello world');
     if (debugDetailsEl) debugDetailsEl.open = true;
     appendRendererLog(debugLogEl, 'hello world (Refresh clicked in renderer)');
     if (typeof getOrderListFn === 'function') getOrderListFn();
-  });
+  }
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      onRefresh();
+    });
+  }
 }
 
 function escapeHtml(s) {
