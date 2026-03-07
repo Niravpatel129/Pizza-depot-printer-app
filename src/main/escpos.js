@@ -59,9 +59,9 @@ function buildRawReceipt(text, barcodeData, opts = {}) {
     characterSize(0x00),
   ];
   const sections = String(text).split(/\n\n+/);
-  const header = sections[0] || '';
-  const body = sections[1] || sections[0] || '';
-  const footer = sections[2] || (sections.length > 1 ? sections[1] : '');
+  const header = sections.length > 1 ? (sections[0] || '') : '';
+  const body = sections.length > 1 ? (sections[1] || '') : (sections[0] || '');
+  const footer = sections.length > 2 ? (sections[2] || '') : '';
   if (header) {
     parts.push(alignment(1), characterSize(0x01), Buffer.from(header + '\n', 'utf8'), characterSize(0x00));
   }

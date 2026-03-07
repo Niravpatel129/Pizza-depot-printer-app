@@ -10,6 +10,7 @@ let printQueue = [];
 let recentlyPrinted = [];
 let printedOrderIds = new Set();
 let isPaused = false;
+let isProcessing = false;
 let lastPrintedAt = null;
 let connected = false;
 let pollTimer = null;
@@ -89,11 +90,17 @@ function setNotify(fn) {
 }
 
 async function processNext() {
-  if (isPaused || printQueue.length === 0) return;
+  if (isPaused || printQueue.length === 0 || isProcessing) return;
+  isProcessing = true;
   const item = printQueue[0];
   const config = loadConfig();
   const job = { ...item.order, _queueId: item.id };
-  const result = await printJob(job, config);
+  let result;
+  try {
+    result = await printJob(job, config);
+  } finally {
+    isProcessing = false;
+  }
   const ok = result && result.ok === true;
   if (ok) {
     clearRetryTimer();

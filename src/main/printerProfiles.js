@@ -19,7 +19,7 @@ function createDefaultProfile(overrides = {}) {
 function widthToCharWidth(width) {
   if (width === 58) return 42;
   if (width === 80) return 48;
-  return width === 58 ? 42 : 48;
+  return 48;
 }
 
 function getProfileById(config, profileId) {

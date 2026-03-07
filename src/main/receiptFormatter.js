@@ -81,7 +81,7 @@ function receiptToRows(orderOrReceipt, opts) {
   };
   const pushDivider = () => rows.push({ type: 'divider' });
   const businessName = (data.businessName ?? data.receiptStoreName ?? data.storeName ?? '').toString().trim().toUpperCase();
-  const addr1 = (data.addressLine1 ?? data.receiptAddressLine1 ?? data.addressLine1 ?? data.storeAddressLine1 ?? '').toString().trim().toUpperCase();
+  const addr1 = (data.addressLine1 ?? data.receiptAddressLine1 ?? data.storeAddressLine1 ?? '').toString().trim().toUpperCase();
   const addr2 = (data.addressLine2 ?? data.receiptAddressLine2 ?? data.storeAddressLine2 ?? '').toString().trim().toUpperCase();
   if (businessName) pushText(businessName, 'center', true);
   if (addr1) pushText(addr1, 'center');
