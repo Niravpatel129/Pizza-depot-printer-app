@@ -38,7 +38,11 @@
     .app {
       min-height: 100vh;
       padding: 20px;
+      padding-bottom: 72px;
+      display: flex;
+      flex-direction: column;
     }
+    .app-content { flex: 1; }
     .header {
       margin-bottom: 20px;
       padding-bottom: 16px;
@@ -64,7 +68,7 @@
       padding: 16px;
       margin-bottom: 12px;
     }
-    .card:last-of-type { margin-bottom: 0; }
+    .app-content .card:last-of-type { margin-bottom: 0; }
     .card-title {
       font-size: 11px;
       font-weight: 600;
@@ -97,7 +101,7 @@
       padding-right: 32px;
     }
     select:focus { outline: none; border-color: var(--accent); }
-    input[type="text"], input[type="number"], input[type="url"] {
+    input[type="text"], input[type="number"], input[type="url"], input[type="password"] {
       width: 100%;
       padding: 10px 12px;
       font: inherit;
@@ -125,6 +129,19 @@
     }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-primary:active { transform: scale(.98); }
+    .footer-actions {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .footer-actions .btn-primary { min-width: 100px; }
     .status-bar {
       display: flex;
       align-items: center;
@@ -248,15 +265,20 @@
       margin-top: 12px;
     }
     .debug-trigger:hover { color: var(--text); border-color: var(--text-muted); }
+    .debug-details { margin-top: 12px; }
+    .debug-details summary {
+      list-style: none;
+      cursor: pointer;
+    }
+    .debug-details summary::-webkit-details-marker { display: none; }
+    .debug-details .debug-popover { display: block; }
     .debug-popover {
-      display: none;
-      margin-top: 12px;
+      margin-top: 8px;
       border: 1px solid var(--border);
       border-radius: var(--radius);
       background: #1e293b;
       overflow: hidden;
     }
-    .debug-popover.open { display: block; }
     .debug-popover-header {
       display: flex;
       align-items: center;
@@ -302,26 +324,28 @@
 </head>
 <body>
   <div class="app">
-    <header class="header">
-      <h1>Settings</h1>
-      <p>Printer Agent</p>
-    </header>
-    <section class="card">
-      <h2 class="card-title">Printer</h2>
-      <label for="printer">Default printer</label>
-      <select id="printer">
-        <option value="">System default</option>
-      </select>
-      <button type="button" class="btn-primary" id="save">Save</button>
-    </section>
-    <section class="card">
-      <h2 class="card-title">Connection</h2>
-      <label for="backendUrl">Backend URL</label>
-      <input type="url" id="backendUrl" placeholder="https://your-backend.herokuapp.com" />
-      <label for="serverPort">Server port (local print endpoint)</label>
-      <input type="number" id="serverPort" min="1024" max="65535" placeholder="3847" />
-    </section>
-    <section class="card">
+    <div class="app-content">
+      <header class="header">
+        <h1>Settings</h1>
+        <p>Printer Agent</p>
+      </header>
+      <section class="card">
+        <h2 class="card-title">Printer</h2>
+        <label for="printer">Default printer</label>
+        <select id="printer">
+          <option value="">System default</option>
+        </select>
+      </section>
+      <section class="card">
+        <h2 class="card-title">Kitchen</h2>
+        <label for="kitchenSecret">Kitchen secret</label>
+        <input type="password" id="kitchenSecret" placeholder="64-char hex from admin or kitchen-secrets.md" autocomplete="off" />
+        <label for="pollIntervalMs">Poll interval (ms)</label>
+        <input type="number" id="pollIntervalMs" min="3000" max="120000" step="1000" placeholder="10000" />
+        <label for="serverPort">Local server port</label>
+        <input type="number" id="serverPort" min="1024" max="65535" placeholder="3847" />
+      </section>
+      <section class="card">
       <h2 class="card-title">Print queue</h2>
       <div class="status-bar">
         <div id="statusPill" class="status-pill disconnected">
@@ -343,15 +367,21 @@
         <ul id="queueList" class="queue-list"></ul>
         <div id="queueEmpty" class="queue-empty">No jobs in queue</div>
       </div>
-      <button type="button" class="debug-trigger" id="debugTrigger" aria-expanded="false">Debug logs</button>
-      <div class="debug-popover" id="debugPopover" role="region" aria-label="Debug logs">
-        <div class="debug-popover-header">
-          <span>Logs</span>
-          <button type="button" id="debugClear">Clear</button>
+      <details class="debug-details" id="debugDetails">
+        <summary class="debug-trigger">Debug logs</summary>
+        <div class="debug-popover" id="debugPopover" role="region" aria-label="Debug logs">
+          <div class="debug-popover-header">
+            <span>Logs</span>
+            <button type="button" id="debugClear">Clear</button>
+          </div>
+          <pre class="debug-log" id="debugLog"></pre>
         </div>
-        <pre class="debug-log" id="debugLog"></pre>
-      </div>
+      </details>
     </section>
+    </div>
+    <footer class="footer-actions">
+      <button type="button" class="btn-primary" id="save">Save</button>
+    </footer>
   </div>
 </body>
 </html>

@@ -25,8 +25,10 @@ function getTrayIcon() {
 function buildTrayMenu(openSettings, onRestart) {
   const config = loadConfig();
   const printerLabel = config.printer || '(default)';
+  const hasCreds = !!config.kitchenSecret;
   return Menu.buildFromTemplate([
     { label: `Printer: ${printerLabel}`, enabled: false },
+    { label: hasCreds ? 'Connected' : 'Set kitchen secret in Settings', enabled: false },
     { type: 'separator' },
     { label: 'Settings', click: () => openSettings() },
     { label: 'Restart server', click: () => onRestart && onRestart() },

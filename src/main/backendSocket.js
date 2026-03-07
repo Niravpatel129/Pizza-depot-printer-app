@@ -1,14 +1,17 @@
 const io = require('socket.io-client');
-const { loadConfig } = require('./config');
+const https = require('https');
+const http = require('http');
+const { loadConfig, API_BASE_URL } = require('./config');
 const { doPrint } = require('./print');
-
-const DEFAULT_BACKEND_URL = 'https://pizza-depot-backend-91ae077a284d.herokuapp.com';
 
 let socket = null;
 let printQueue = [];
+let printedOrderIds = new Set();
 let isPaused = false;
 let lastPrintedAt = null;
 let connected = false;
+let pollTimer = null;
+let lastPollSince = null;
 let notifyFn = null;
 
 function orderToLines(order) {
@@ -18,18 +21,24 @@ function orderToLines(order) {
   if (order.receiptLines && order.receiptLines.length) return order.receiptLines;
   if (order.text) return order.text.split('\n');
   const lines = [];
-  if (order.id) lines.push(`Order #${order.id}`);
-  if (order.orderId) lines.push(`Order #${order.orderId}`);
+  const orderNum = order.orderNumber || order._id || order.id || order.orderId;
+  if (orderNum) lines.push(`Order #${orderNum}`);
+  if (order.storeName) lines.push(order.storeName);
   if (order.items && order.items.length) {
     order.items.forEach((i) => {
       const name = i.name || i.title || '';
       const qty = i.quantity ?? i.qty ?? 1;
       const price = i.price ?? i.total ?? '';
-      lines.push(`${qty}x ${name}${price ? `  $${price}` : ''}`);
+      const opts = i.options && i.options.length ? ` (${i.options.join(', ')})` : '';
+      lines.push(`${qty}x ${name}${opts}${price ? `  $${Number(price).toFixed(2)}` : ''}`);
     });
   }
-  if (order.subtotal != null) lines.push(`Subtotal  $${order.subtotal}`);
-  if (order.total != null) lines.push(`Total  $${order.total}`);
+  if (order.subtotal != null) lines.push(`Subtotal  $${Number(order.subtotal).toFixed(2)}`);
+  if (order.tax != null) lines.push(`Tax  $${Number(order.tax).toFixed(2)}`);
+  if (order.deliveryFee != null && order.deliveryFee > 0) lines.push(`Delivery  $${Number(order.deliveryFee).toFixed(2)}`);
+  if (order.total != null) lines.push(`Total  $${Number(order.total).toFixed(2)}`);
+  if (order.notes) lines.push(`Notes: ${order.notes}`);
+  if (order.deliveryAddress) lines.push(`Address: ${order.deliveryAddress}`);
   if (lines.length) return lines;
   return ['(no content)'];
 }
@@ -78,6 +87,9 @@ function setNotify(fn) {
 function processNext() {
   if (isPaused || printQueue.length === 0) return;
   const item = printQueue.shift();
+  if (item.order && (item.order._id || item.order.id)) {
+    printedOrderIds.add(item.order._id || item.order.id);
+  }
   notify();
   const config = loadConfig();
   const lines = orderToLines(item.order);
@@ -89,19 +101,82 @@ function processNext() {
   if (printQueue.length > 0 && !isPaused) setImmediate(processNext);
 }
 
-function onOrderPrint(order) {
-  const id = order?.id ?? order?.orderId ?? order?._id ?? Date.now();
+function addOrderToQueue(order) {
+  const id = order?._id ?? order?.id ?? order?.orderId ?? String(Date.now());
+  if (printedOrderIds.has(id)) return;
   const lines = orderToLines(order);
-  const label = (lines[0] || `Order ${id}`).slice(0, 40);
+  const label = (order.orderNumber || lines[0] || `Order ${id}`).slice(0, 40);
   printQueue.push({ id, order, addedAt: new Date().toISOString(), label });
   notify();
   if (!isPaused) processNext();
 }
 
+function onOrderNew(order) {
+  addOrderToQueue(order);
+}
+
+function onOrderPrint(order) {
+  addOrderToQueue(order);
+}
+
+function onOrderUpdated(order) {
+  console.log('Order updated:', order?._id || order?.orderNumber);
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function fetchKitchenOrders(cb) {
+  const config = loadConfig();
+  const base = (API_BASE_URL || '').replace(/\/$/, '');
+  const secret = config.kitchenSecret || '';
+  if (!base || !secret) return cb(null, []);
+  const since = lastPollSince ? `&since=${encodeURIComponent(lastPollSince)}` : '';
+  const pathStr = `/api/kitchen/orders?secret=${encodeURIComponent(secret)}&limit=50${since}`;
+  const url = new URL(pathStr, base);
+  const protocol = url.protocol === 'https:' ? https : http;
+  const req = protocol.get(url.toString(), (res) => {
+    let data = '';
+    res.on('data', (chunk) => (data += chunk));
+    res.on('end', () => {
+      try {
+        const json = JSON.parse(data || '{}');
+        const orders = json.orders || [];
+        let maxUpdated = lastPollSince;
+        orders.forEach((o) => {
+          const u = o.updatedAt || o.createdAt;
+          if (u && (!maxUpdated || u > maxUpdated)) maxUpdated = u;
+          addOrderToQueue(o);
+        });
+        if (maxUpdated) lastPollSince = maxUpdated;
+        cb(null, orders);
+      } catch (e) {
+        cb(e, []);
+      }
+    });
+  });
+  req.on('error', cb);
+  req.setTimeout(15000, () => { req.destroy(); cb(new Error('timeout'), []); });
+}
+
+function startPolling() {
+  stopPolling();
+  const config = loadConfig();
+  const interval = Math.max(5000, config.pollIntervalMs || 10000);
+  fetchKitchenOrders(() => {});
+  pollTimer = setInterval(() => fetchKitchenOrders(() => {}), interval);
+  console.log('Kitchen polling started (interval %d ms)', interval);
+}
+
 function connect() {
   const config = loadConfig();
-  const url = (config.backendUrl || DEFAULT_BACKEND_URL).replace(/\/$/, '');
-  if (!url) return;
+  const url = (API_BASE_URL || '').replace(/\/$/, '');
+  const secret = config.kitchenSecret || '';
+  stopPolling();
   if (socket) {
     socket.removeAllListeners();
     socket.disconnect();
@@ -109,25 +184,41 @@ function connect() {
   }
   connected = false;
   notify();
-  socket = io(url, { transports: ['websocket', 'polling'], reconnection: true });
+  if (!secret) {
+    console.log('Socket skipped: kitchen secret required');
+    return;
+  }
+  socket = io(url, {
+    auth: { secret },
+    query: { secret },
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+  });
+  socket.on('order:new', onOrderNew);
   socket.on('order:print', onOrderPrint);
+  socket.on('order:updated', onOrderUpdated);
   socket.on('connect', () => {
     connected = true;
+    stopPolling();
+    lastPollSince = null;
     console.log('Printer agent connected to backend');
     notify();
   });
   socket.on('disconnect', () => {
     connected = false;
     notify();
+    startPolling();
   });
   socket.on('connect_error', (e) => {
     connected = false;
     notify();
     if (e.message) console.error('Backend socket error:', e.message);
+    startPolling();
   });
 }
 
 function disconnect() {
+  stopPolling();
   if (socket) {
     socket.removeAllListeners();
     socket.disconnect();

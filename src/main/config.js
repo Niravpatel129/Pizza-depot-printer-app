@@ -4,19 +4,28 @@ const { app } = require('electron');
 
 const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
 
-const DEFAULT_BACKEND_URL = 'https://pizza-depot-backend-91ae077a284d.herokuapp.com';
+const API_BASE_URL = 'https://pizza-depot-backend-91ae077a284d.herokuapp.com';
+
+const DEFAULTS = {
+  printer: '',
+  kitchenSecret: '',
+  pollIntervalMs: 10000,
+  port: 3847,
+};
 
 function loadConfig() {
   try {
     const c = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return { printer: '', backendUrl: DEFAULT_BACKEND_URL, port: 3847, ...c };
+    return { ...DEFAULTS, ...c };
   } catch {
-    return { printer: '', backendUrl: DEFAULT_BACKEND_URL, port: 3847 };
+    return { ...DEFAULTS };
   }
 }
 
 function saveConfig(config) {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  const existing = loadConfig();
+  const merged = { ...existing, ...config };
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(merged, null, 2));
 }
 
-module.exports = { loadConfig, saveConfig, CONFIG_PATH };
+module.exports = { loadConfig, saveConfig, CONFIG_PATH, API_BASE_URL };

@@ -94,21 +94,26 @@ export function mountSettings() {
       });
       select.value = config?.printer || '';
     }
-    const backendUrl = document.getElementById('backendUrl');
+    const kitchenSecret = document.getElementById('kitchenSecret');
+    const pollIntervalMs = document.getElementById('pollIntervalMs');
     const serverPort = document.getElementById('serverPort');
-    if (backendUrl) backendUrl.value = config?.backendUrl || '';
+    if (kitchenSecret) kitchenSecret.value = config?.kitchenSecret || '';
+    if (pollIntervalMs) pollIntervalMs.value = config?.pollIntervalMs ?? 10000;
     if (serverPort) serverPort.value = config?.port ?? 3847;
   });
   const saveBtn = document.getElementById('save');
   if (saveBtn) {
     saveBtn.onclick = () => {
       const select = document.getElementById('printer');
-      const backendUrl = document.getElementById('backendUrl');
+      const kitchenSecret = document.getElementById('kitchenSecret');
+      const pollIntervalMs = document.getElementById('pollIntervalMs');
       const serverPort = document.getElementById('serverPort');
       const port = serverPort ? parseInt(serverPort.value, 10) : 3847;
+      const pollMs = pollIntervalMs ? parseInt(pollIntervalMs.value, 10) : 10000;
       saveConfig({
         printer: select ? select.value.trim() : '',
-        backendUrl: backendUrl ? backendUrl.value.trim() : '',
+        kitchenSecret: kitchenSecret ? kitchenSecret.value : '',
+        pollIntervalMs: Number.isFinite(pollMs) ? Math.max(3000, Math.min(120000, pollMs)) : 10000,
         port: Number.isFinite(port) ? port : 3847,
       });
     };
@@ -147,19 +152,14 @@ export function mountSettings() {
   });
   getPrintQueue().then(renderQueue);
 
-  const debugTrigger = document.getElementById('debugTrigger');
-  const debugPopover = document.getElementById('debugPopover');
   const debugLog = document.getElementById('debugLog');
   const debugClear = document.getElementById('debugClear');
   onLogHistory((entries) => renderLogHistory(entries, debugLog));
   onLog((entry) => appendLogEntry(entry, debugLog));
-  if (debugTrigger && debugPopover) {
-    debugTrigger.addEventListener('click', () => {
-      const open = debugPopover.classList.toggle('open');
-      debugTrigger.setAttribute('aria-expanded', String(open));
-    });
-  }
   if (debugClear && debugLog) {
-    debugClear.addEventListener('click', () => { debugLog.innerHTML = ''; });
+    debugClear.addEventListener('click', (e) => {
+      e.preventDefault();
+      debugLog.innerHTML = '';
+    });
   }
 }

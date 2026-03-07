@@ -13,7 +13,7 @@ function openSettings(refreshMenu) {
   const config = loadConfig();
   settingsWindow = new BrowserWindow({
     width: 400,
-    height: 580,
+    height: 640,
     minWidth: 360,
     minHeight: 420,
     show: false,
