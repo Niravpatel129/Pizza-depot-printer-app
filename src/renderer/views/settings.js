@@ -1,4 +1,15 @@
-import { onConfig, saveConfig, getStatus, setPaused, onPrintQueueUpdate, onLog, onLogHistory, getLogHistory, getOrderList, getPrintQueue } from '../api';
+import {
+  getLogHistory,
+  getOrderList,
+  getPrintQueue,
+  getStatus,
+  onConfig,
+  onLog,
+  onLogHistory,
+  onPrintQueueUpdate,
+  saveConfig,
+  setPaused,
+} from '../api';
 
 function renderStatus(status) {
   const pill = document.getElementById('statusPill');
@@ -92,7 +103,11 @@ function syncPauseSwitch() {
 function formatLogTime(iso) {
   try {
     const d = new Date(iso);
-    return d.toLocaleTimeString('en-US', { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    return (
+      d.toLocaleTimeString('en-US', { hour12: false }) +
+      '.' +
+      String(d.getMilliseconds()).padStart(3, '0')
+    );
   } catch {
     return '';
   }
@@ -113,7 +128,10 @@ export function appendRendererLog(container, message) {
   if (!container) return;
   const line = document.createElement('div');
   line.className = 'line log';
-  const ts = new Date().toLocaleTimeString('en-US', { hour12: false }) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+  const ts =
+    new Date().toLocaleTimeString('en-US', { hour12: false }) +
+    '.' +
+    String(new Date().getMilliseconds()).padStart(3, '0');
   line.innerHTML = `<span class="ts">${ts}</span><span class="lvl log">LOG</span> ${escapeHtml(message)}`;
   container.appendChild(line);
   container.scrollTop = container.scrollHeight;
@@ -123,9 +141,10 @@ export function setupRefreshClick(getOrderListFn, opts = {}) {
   const doc = opts.document || document;
   const debugLogEl = opts.debugLogEl || doc.getElementById('debugLog');
   const debugDetailsEl = opts.debugDetailsEl || doc.getElementById('debugDetails');
-  const refreshBtn = doc.getElementById('refreshOrderList') || doc.querySelector('[data-action="refresh-order-list"]');
+  const refreshBtn =
+    doc.getElementById('refreshOrderList') ||
+    doc.querySelector('[data-action="refresh-order-list"]');
   function onRefresh() {
-    alert('hello world');
     if (debugDetailsEl) debugDetailsEl.open = true;
     appendRendererLog(debugLogEl, 'hello world (Refresh clicked in renderer)');
     if (typeof getOrderListFn === 'function') getOrderListFn();
@@ -227,7 +246,9 @@ export function mountSettings() {
     getOrderList({ limit: 50 })
       .then(({ orders }) => renderOrderList(orders))
       .catch(() => renderOrderList([], 'Load failed. Click Refresh to try again.'))
-      .finally(() => { if (refreshBtn) refreshBtn.disabled = false; });
+      .finally(() => {
+        if (refreshBtn) refreshBtn.disabled = false;
+      });
   }
   loadOrderList();
   setupRefreshClick(loadOrderList);
@@ -243,17 +264,25 @@ export function mountSettings() {
         const list = Array.isArray(entries) ? entries : [];
         if (list.length === 0) {
           debugLog.innerHTML = '';
-          debugLog.appendChild(document.createTextNode('No logs yet. Main process logs appear here and in the terminal.'));
+          debugLog.appendChild(
+            document.createTextNode(
+              'No logs yet. Main process logs appear here and in the terminal.',
+            ),
+          );
         } else {
           renderLogHistory(list, debugLog);
         }
       })
-      .catch(() => { if (debugLog) debugLog.textContent = 'Could not load logs.'; });
+      .catch(() => {
+        if (debugLog) debugLog.textContent = 'Could not load logs.';
+      });
   }
 
   refreshLogHistory();
   if (debugDetailsEl) {
-    debugDetailsEl.addEventListener('toggle', () => { if (debugDetailsEl.open) refreshLogHistory(); });
+    debugDetailsEl.addEventListener('toggle', () => {
+      if (debugDetailsEl.open) refreshLogHistory();
+    });
   }
   onLogHistory((entries) => renderLogHistory(Array.isArray(entries) ? entries : [], debugLog));
   onLog((entry) => appendLogEntry(entry, debugLog));
