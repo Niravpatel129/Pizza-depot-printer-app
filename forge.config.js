@@ -11,6 +11,12 @@ module.exports = {
       name: '@electron-forge/maker-squirrel',
       config: {
         name: 'PrinterAgent',
+        appId: 'com.squirrel.PrinterAgent.PrinterAgent',
+        ...(process.platform !== 'win32' && { skipUpdateIcon: true }),
+        ...(process.env.WIN_CERT_FILE && {
+          certificateFile: process.env.WIN_CERT_FILE,
+          certificatePassword: process.env.WIN_CERT_PASSWORD,
+        }),
       },
     },
     {
