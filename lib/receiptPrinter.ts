@@ -66,7 +66,7 @@ async function request(path: string, body: object): Promise<{ ok: boolean; messa
     (err as Error & { status?: number; code?: string }).code = data.code;
     throw err;
   }
-  return data;
+  return { ok: data.ok ?? true, message: data.message };
 }
 
 function body(): { printerName?: string; printerIP?: string } {
