@@ -5,9 +5,13 @@ const path = require('path');
 
 let printerModule = null;
 try {
-  printerModule = require('printer');
+  printerModule = require('@thesusheer/electron-printer');
 } catch {
-  printerModule = null;
+  try {
+    printerModule = require('printer');
+  } catch {
+    printerModule = null;
+  }
 }
 
 function stripControlChars(buf) {
