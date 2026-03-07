@@ -1,4 +1,9 @@
-const RECEIPT_WIDTH = 32;
+const DEFAULT_RECEIPT_WIDTH = 42;
+
+function getWidth(opts) {
+  const w = opts?.receiptWidth ?? DEFAULT_RECEIPT_WIDTH;
+  return Math.max(16, Math.min(64, Number(w) || DEFAULT_RECEIPT_WIDTH));
+}
 
 function padRight(str, width) {
   const s = String(str);
@@ -24,44 +29,49 @@ function formatDate(order) {
   }
 }
 
-function center(str) {
+function center(str, width) {
   const s = String(str).trim();
-  if (s.length >= RECEIPT_WIDTH) return s.slice(0, RECEIPT_WIDTH);
-  const pad = Math.max(0, RECEIPT_WIDTH - s.length);
+  if (s.length >= width) return s.slice(0, width);
+  const pad = Math.max(0, width - s.length);
   return ' '.repeat(Math.floor(pad / 2)) + s + ' '.repeat(Math.ceil(pad / 2));
 }
 
-function buildHeader(data) {
+function buildHeader(data, width) {
   const name = (data?.receiptStoreName ?? data?.storeName ?? '').toString().trim().toUpperCase();
   const line1 = (data?.receiptAddressLine1 ?? data?.addressLine1 ?? data?.storeAddressLine1 ?? '').toString().trim().toUpperCase();
   const line2 = (data?.receiptAddressLine2 ?? data?.addressLine2 ?? data?.storeAddressLine2 ?? '').toString().trim().toUpperCase();
   const lines = [];
-  if (name) lines.push(center(name));
-  if (line1) lines.push(center(line1));
-  if (line2) lines.push(center(line2));
+  if (name) lines.push(center(name, width));
+  if (line1) lines.push(center(line1, width));
+  if (line2) lines.push(center(line2, width));
   return lines.length ? lines.join('\n') : '';
 }
 
-function buildFooter(data) {
-  const msg = (data?.receiptFooterMessage ?? data?.footerMessage ?? data?.footer_message ?? '').toString().trim().toUpperCase();
+const DEFAULT_FOOTER_MSG = 'ENJOY YOUR MEAL!';
+
+function buildFooter(data, width) {
+  const msg = (data?.receiptFooterMessage ?? data?.footerMessage ?? data?.footer_message ?? DEFAULT_FOOTER_MSG).toString().trim().toUpperCase() || DEFAULT_FOOTER_MSG;
   const site = (data?.receiptFooterWebsite ?? data?.footerWebsite ?? data?.footer_website ?? '').toString().trim().toUpperCase();
   const lines = [];
-  if (msg) lines.push(center(msg));
-  if (site) lines.push(center(site));
-  return lines.length ? lines.join('\n') : '';
+  lines.push(center(msg, width));
+  if (site) lines.push(center(site, width));
+  return lines.join('\n');
 }
 
-function orderToReceiptLines(order) {
+function orderToReceiptLines(order, width) {
   if (!order) return [];
+  const w = width ?? DEFAULT_RECEIPT_WIDTH;
+  const sep = '-'.repeat(w);
+  const nameCol = Math.max(10, w - 10);
   const lines = [];
   const orderNum = order.orderNumber ?? order.order_id ?? order._id ?? order.id ?? order.orderId ?? '';
   const customerName = (order.customerName ?? order.customer_name ?? order.customer?.name ?? order.customer?.firstName ?? '').toString().trim().toUpperCase();
   const orderLabel = orderNum ? `ORDER: #${String(orderNum).replace(/^#/, '')}${customerName ? ` FOR ${customerName}` : ''}` : '';
-  if (orderLabel) lines.push(orderLabel);
+  if (orderLabel) lines.push(orderLabel.length > w ? orderLabel.slice(0, w) : orderLabel);
   const dateStr = formatDate(order);
-  if (dateStr) lines.push(`DATE: ${dateStr}`);
-  lines.push('................................');
-  lines.push(padRight('NUM ITEM', RECEIPT_WIDTH - 10) + 'AMT ($)');
+  if (dateStr) lines.push((dateStr.length > w ? dateStr.slice(0, w) : dateStr));
+  lines.push(sep);
+  lines.push(padRight('NUM ITEM', nameCol) + 'AMT ($)');
   const items = order.items || order.lineItems || [];
   let itemCount = 0;
   items.forEach((item, idx) => {
@@ -71,48 +81,49 @@ function orderToReceiptLines(order) {
     itemCount += Number(item.quantity ?? item.qty ?? 1) || 1;
     const namePart = `${num} ${name}`;
     const pricePart = price ? price.padStart(8) : '';
-    lines.push(padRight(namePart, RECEIPT_WIDTH - 10) + pricePart);
+    lines.push(padRight(namePart, nameCol) + pricePart);
     const modifiers = item.modifiers ?? item.toppings ?? item.options ?? [];
     if (Array.isArray(modifiers) && modifiers.length) {
       modifiers.forEach((m) => {
         const modName = (typeof m === 'string' ? m : (m && m.name) || '').toString().trim().toUpperCase();
-        if (modName) lines.push('   ' + modName);
+        if (modName) lines.push(('   ' + modName).slice(0, w));
       });
     } else if (item.options && typeof item.options === 'string') {
-      lines.push('   ' + String(item.options).trim().toUpperCase());
+      lines.push(('   ' + String(item.options).trim().toUpperCase()).slice(0, w));
     }
   });
-  lines.push('................................');
+  lines.push(sep);
   const totalCount = order.itemCount ?? items.length ?? itemCount;
-  lines.push(padRight(`ITEM COUNT`, RECEIPT_WIDTH - 10) + String(totalCount).padStart(8));
+  lines.push(padRight(`ITEM COUNT`, nameCol) + String(totalCount).padStart(8));
   const total = order.total != null ? formatPrice(order.total) : '';
-  if (total) lines.push(padRight('TOTAL', RECEIPT_WIDTH - 10) + '$ ' + total.padStart(6));
-  lines.push('................................');
+  if (total) lines.push(padRight('TOTAL', nameCol) + '$ ' + total.padStart(6));
+  lines.push(sep);
   const cardLast4 = order.cardLast4 ?? order.card_last4 ?? order.payment?.last4;
-  if (cardLast4 != null) lines.push(`CARD #: **** **** **** ${String(cardLast4).slice(-4)}`);
+  if (cardLast4 != null) lines.push(`CARD #: **** **** **** ${String(cardLast4).slice(-4)}`.slice(0, w));
   const authNum = order.authNumber ?? order.auth_number ?? order.authorizationNumber ?? order.payment?.authNumber;
-  if (authNum != null) lines.push(`AUTH #: ${authNum}`);
+  if (authNum != null) lines.push(`AUTH #: ${authNum}`.slice(0, w));
   const userId = order.userId ?? order.user_id ?? order.cashierName ?? order.payment?.userId;
-  if (userId != null) lines.push(`USERID: ${String(userId).toUpperCase()}`);
+  if (userId != null) lines.push(`USERID: ${String(userId).toUpperCase()}`.slice(0, w));
   return lines;
 }
 
-function buildReceipt(orderOrLines) {
+function buildReceipt(orderOrLines, opts) {
+  const width = getWidth(opts);
   const data = orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines) ? orderOrLines : {};
-  const header = buildHeader(data);
+  const header = buildHeader(data, width);
   let body;
   if (orderOrLines && typeof orderOrLines === 'object' && !Array.isArray(orderOrLines)) {
     if (orderOrLines.lines?.length) body = orderOrLines.lines.join('\n');
     else if (orderOrLines.receipt_lines?.length) body = orderOrLines.receipt_lines.join('\n');
     else if (orderOrLines.receiptLines?.length) body = orderOrLines.receiptLines.join('\n');
     else if (orderOrLines.text) body = orderOrLines.text;
-    else body = orderToReceiptLines(orderOrLines).join('\n');
+    else body = orderToReceiptLines(orderOrLines, width).join('\n');
   } else if (Array.isArray(orderOrLines) && orderOrLines.length) {
     body = orderOrLines.join('\n');
   } else {
     body = '(no content)';
   }
-  const footer = buildFooter(data);
+  const footer = buildFooter(data, width);
   const parts = [header, body, footer].filter(Boolean);
   return parts.join('\n\n');
 }

@@ -55,7 +55,7 @@ function poll() {
     const jobs = data.jobs || data.orders || data.items || Array.isArray(data) ? (data.jobs || data.orders || data.items || data) : [];
     jobs.forEach((job) => {
       const id = job.id || job.orderId || job._id;
-      const receipt = buildReceipt(job);
+      const receipt = buildReceipt(job, config);
       console.log('\n' + receipt + '\n');
       doPrint(receipt, config);
       if (id) {

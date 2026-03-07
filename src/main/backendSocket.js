@@ -21,6 +21,12 @@ let notifyFn = null;
 let retryTimer = null;
 let printError = null;
 let nextRetryAt = null;
+let reconnectFallbackTimer = null;
+let connectionRefreshTimer = null;
+let livenessCheckTimer = null;
+const RECONNECT_POLL_DELAY_MS = 30000;
+const CONNECTION_REFRESH_MS = 120000;
+const LIVENESS_CHECK_MS = 25000;
 
 function notify() {
   if (notifyFn) notifyFn({ queue: getQueue(), status: getStatus() });
@@ -82,7 +88,7 @@ function processNext() {
   if (isPaused || printQueue.length === 0) return;
   const item = printQueue[0];
   const config = loadConfig();
-  const receipt = buildReceipt(item.order);
+  const receipt = buildReceipt(item.order, config);
   console.log('\n' + receipt + '\n');
   const ok = doPrint(receipt, config);
   if (ok) {
@@ -145,6 +151,61 @@ function stopPolling() {
     clearInterval(pollTimer);
     pollTimer = null;
   }
+}
+
+function clearReconnectFallback() {
+  if (reconnectFallbackTimer) {
+    clearTimeout(reconnectFallbackTimer);
+    reconnectFallbackTimer = null;
+  }
+}
+
+function clearConnectionRefresh() {
+  if (connectionRefreshTimer) {
+    clearInterval(connectionRefreshTimer);
+    connectionRefreshTimer = null;
+  }
+}
+
+function clearLivenessCheck() {
+  if (livenessCheckTimer) {
+    clearInterval(livenessCheckTimer);
+    livenessCheckTimer = null;
+  }
+}
+
+function startConnectionRefresh() {
+  clearConnectionRefresh();
+  if (!socket) return;
+  connectionRefreshTimer = setInterval(() => {
+    if (socket && connected) {
+      clearConnectionRefresh();
+      socket.disconnect();
+    }
+  }, CONNECTION_REFRESH_MS);
+}
+
+function startLivenessCheck() {
+  clearLivenessCheck();
+  if (!socket) return;
+  livenessCheckTimer = setInterval(() => {
+    if (!connected || !socket) return;
+    getOrderList({ limit: 1 })
+      .catch(() => {
+        if (socket && connected) {
+          clearLivenessCheck();
+          socket.disconnect();
+        }
+      });
+  }, LIVENESS_CHECK_MS);
+}
+
+function schedulePollingFallback() {
+  clearReconnectFallback();
+  reconnectFallbackTimer = setTimeout(() => {
+    reconnectFallbackTimer = null;
+    if (!connected) startPolling();
+  }, RECONNECT_POLL_DELAY_MS);
 }
 
 function getOrderList(opts = {}) {
@@ -245,31 +306,42 @@ function connect() {
     query: { secret },
     transports: ['websocket', 'polling'],
     reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000,
   });
   socket.on('order:new', onOrderNew);
   socket.on('order:print', onOrderPrint);
   socket.on('order:updated', onOrderUpdated);
   socket.on('connect', () => {
     connected = true;
+    clearReconnectFallback();
     stopPolling();
     lastPollSince = null;
+    startConnectionRefresh();
+    startLivenessCheck();
     console.log('Printer agent connected to backend');
     notify();
   });
   socket.on('disconnect', () => {
     connected = false;
+    clearConnectionRefresh();
+    clearLivenessCheck();
     notify();
-    startPolling();
+    clearReconnectFallback();
+    schedulePollingFallback();
   });
   socket.on('connect_error', (e) => {
     connected = false;
     notify();
     if (e.message) console.error('Backend socket error:', e.message);
-    startPolling();
   });
 }
 
 function disconnect() {
+  clearConnectionRefresh();
+  clearLivenessCheck();
+  clearReconnectFallback();
   stopPolling();
   clearRetryTimer();
   if (socket) {

@@ -306,6 +306,8 @@ export function mountSettings() {
       });
       select.value = config?.printer || '';
     }
+    const receiptWidthEl = document.getElementById('receiptWidth');
+    if (receiptWidthEl) receiptWidthEl.value = String(config?.receiptWidth ?? 42);
     const kitchenSecret = document.getElementById('kitchenSecret');
     const pollIntervalMs = document.getElementById('pollIntervalMs');
     if (kitchenSecret) kitchenSecret.value = config?.kitchenSecret || '';
@@ -318,8 +320,11 @@ export function mountSettings() {
       const kitchenSecret = document.getElementById('kitchenSecret');
       const pollIntervalMs = document.getElementById('pollIntervalMs');
       const pollMs = pollIntervalMs ? parseInt(pollIntervalMs.value, 10) : 10000;
+      const receiptWidthEl = document.getElementById('receiptWidth');
+      const receiptWidth = receiptWidthEl ? Math.max(16, Math.min(64, parseInt(receiptWidthEl.value, 10) || 42)) : 42;
       saveConfig({
         printer: select ? select.value.trim() : '',
+        receiptWidth,
         kitchenSecret: kitchenSecret ? kitchenSecret.value : '',
         pollIntervalMs: Number.isFinite(pollMs) ? Math.max(3000, Math.min(120000, pollMs)) : 10000,
       });
