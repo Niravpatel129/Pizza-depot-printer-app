@@ -7,6 +7,7 @@ import {
   onLog,
   onLogHistory,
   onPrintQueueUpdate,
+  reprintOrder,
   saveConfig,
   setPaused,
 } from '../api';
@@ -56,12 +57,22 @@ function renderOrderList(orders, emptyMessage) {
     num.className = 'num';
     num.textContent = `${i + 1}.`;
     const label = document.createElement('span');
+    label.className = 'order-label';
     const numStr = order.orderNumber || order._id || order.id || '—';
     const totalStr = order.total != null ? `$${Number(order.total).toFixed(2)}` : '';
     const statusStr = order.status || '';
     label.textContent = [numStr, statusStr, totalStr].filter(Boolean).join(' · ');
     li.appendChild(num);
     li.appendChild(label);
+    const reprintBtn = document.createElement('button');
+    reprintBtn.type = 'button';
+    reprintBtn.className = 'btn-reprint';
+    reprintBtn.textContent = 'Reprint';
+    reprintBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      reprintOrder(order).catch(() => {});
+    });
+    li.appendChild(reprintBtn);
     list.appendChild(li);
   });
 }

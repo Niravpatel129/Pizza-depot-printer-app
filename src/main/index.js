@@ -55,6 +55,15 @@ ipcMain.handle('get-log-history', () => {
   }
 });
 ipcMain.on('set-paused', (_, paused) => backendSocket.setPaused(paused));
+ipcMain.handle('reprint-order', (_, order) => {
+  try {
+    backendSocket.reprintOrder(order);
+    return Promise.resolve();
+  } catch (err) {
+    console.error('reprint-order error', err);
+    return Promise.reject(err);
+  }
+});
 
 app.whenReady().then(() => {
   server.createServer(dialog);

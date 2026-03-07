@@ -111,6 +111,12 @@ function addOrderToQueue(order) {
   if (!isPaused) processNext();
 }
 
+function reprintOrder(order) {
+  const id = order?._id ?? order?.id ?? order?.orderId;
+  if (id) printedOrderIds.delete(id);
+  addOrderToQueue(order);
+}
+
 function onOrderNew(order) {
   addOrderToQueue(order);
 }
@@ -263,4 +269,4 @@ function disconnect() {
   notify();
 }
 
-module.exports = { connect, disconnect, getQueue, getStatus, setPaused, setNotify, getOrderList };
+module.exports = { connect, disconnect, getQueue, getStatus, setPaused, setNotify, getOrderList, reprintOrder };

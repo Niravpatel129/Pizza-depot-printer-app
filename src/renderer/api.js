@@ -26,6 +26,10 @@ export function getOrderList(opts) {
   return typeof window.printerAgent !== 'undefined' ? window.printerAgent.getOrderList(opts) : Promise.resolve({ orders: [] });
 }
 
+export function reprintOrder(order) {
+  return typeof window.printerAgent !== 'undefined' ? window.printerAgent.reprintOrder(order) : Promise.resolve();
+}
+
 export function setPaused(paused) {
   if (typeof window.printerAgent !== 'undefined') {
     window.printerAgent.setPaused(paused);
