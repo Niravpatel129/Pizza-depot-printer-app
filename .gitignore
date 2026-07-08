@@ -88,5 +88,25 @@ typings/
 # Vite
 .vite/
 
-# Electron-Forge
+# Electron Forge / Electron Builder generated output
 out/
+dist/
+release/
+releases/
+
+# Installer and packaged app artifacts
+*.dmg
+*.exe
+*.msi
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.pkg
+*.zip
+*.blockmap
+*.nupkg
+
+# Native build scratch directories
+build/
+prebuilds/
