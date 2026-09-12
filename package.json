@@ -1,7 +1,7 @@
 {
   "name": "printer-agent",
   "productName": "Printer Agent",
-  "version": "1.25.0",
+  "version": "1.26.0",
   "description": "Tray app that listens for receipt print requests",
   "main": ".webpack/main",
   "private": true,
